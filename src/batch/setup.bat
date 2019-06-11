@@ -1,4 +1,4 @@
-@title Casino Neat Diceroller ~ Setup
+@title CN ~ Setup
 @echo off
 cls
 set /p token=Please enter your bot token:
