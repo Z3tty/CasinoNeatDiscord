@@ -233,6 +233,6 @@ async def update(ctx, user: discord.User, amount: int):
 					await ctx.send("```They need an account to be eligible for a balance update```")
 					return
 	else:
-		await ctx.send("```Thats a no from me dawg")
+		await ctx.send("```Thats a no from me dawg```")
 
 bot.run(TOKEN)
