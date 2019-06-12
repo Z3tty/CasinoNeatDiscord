@@ -403,4 +403,76 @@ async def update(ctx, user: discord.User, amount: int):
 	else:
 		await ctx.send("```Thats a no from me dawg```")
 
+@bot.command()
+async def raffle(ctx, prize: int):
+	global DB
+	global RIGGED
+	author = ctx.message.author
+	is_admin: bool = author.top_role.permissions.administrator
+	winner_id = ""
+	print("({}) {} used $raffle for ¤{} | Is admin: {}".format(author.id, author.name, prize, is_admin))
+	if is_admin:
+		user_ids: list = []
+		line: str = "000000000"
+		if RIGGED:
+			winner_id = str(author.id)
+			print("Rigged for : {}".format(winner_id))
+			RIGGED = False
+		else:
+			with open(DB, "r+") as db:
+				while line != "":
+					try:
+						line = db.readline()
+						split = line.split("/")
+						current_id = split[0]
+						if current_id != "": user_ids.append(current_id)
+					except StopIteration:
+						print("Hit end of db search")
+			roll = random.randint(0, len(user_ids))
+			winner_id = user_ids[roll]
+		line = "0000000"
+		with open(DB, "r+") as db:
+			while line != "":
+				try: # Use exceptions to find the EOF
+					line = db.readline()
+					if winner_id in line: # If we found the user
+						split: list = line.split("/") # Get the balance and id seperately
+						bal: str = split[1] 
+						balint = int(bal)
+						print("Winner is {}".format(winner_id))
+						print("Old balance: {}".format(balint))
+						balint += prize
+						await ctx.send("**Congrats <@{}>! You just won ¤{}**".format(winner_id, prize))
+						print("New balance: {}".format(balint))
+						bal = str(balint)
+						newline = winner_id + "/" + bal # make the new db entry
+						tmpdata = "0000000"
+						with open(DBTMP, "w") as clear: # clear the tmp file, just in case
+							clear.write("")
+						with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
+							with open(DB, "r+") as db:
+								while tmpdata != "":
+									dbline = db.readline()
+									tmpdata = dbline
+									if dbline == line:			# write the new line instead of the old one
+										tmp.write(newline+"\n")
+									else:
+										tmp.write(dbline+"\n")
+						tmpdata = "0000000"
+						with open(DB, "w") as clear:		# clear the db
+							clear.write("")
+						with open(DB, "r+") as db:			# rewrite the db for future use
+							with open(DBTMP, "r+") as tmp:
+								while tmpdata != "":
+									tmpdata = tmp.readline()
+									if(tmpdata != "\n"): db.write(tmpdata)
+						with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
+							clear.write("")
+						return
+				except StopIteration:
+					print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
+					await ctx.send("```They need an account to be eligible for a raffle win (i.e. something went wrong)```")
+					return
+
+
 bot.run(TOKEN)
