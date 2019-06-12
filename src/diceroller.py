@@ -1,3 +1,19 @@
+#! /usr/bin/env python3
+"""
+	This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import discord
 import random
 from discord.ext import commands
@@ -31,6 +47,12 @@ with open("enc/token.cncrypt", "r+") as tfile:
 # Roll a dice with a variable amount of sides
 @bot.command()
 async def roll(ctx, max: int):
+	"""
+	Roll: 	
+			performs a riggable roll, printing the result in the chat used, utilizing the sides provided.
+	Requires:
+			Nothing
+	"""
 	global RIGGED
 	author = ctx.message.author
 	print("({}) {} used $roll with {} sides".format(author.id, author.name, max))
@@ -50,6 +72,12 @@ async def roll(ctx, max: int):
 # Rigg the next roll
 @bot.command()
 async def rigg(ctx):
+	"""
+	Rigg: 	
+			riggs the next roll of any dice, regardless of source.
+	Requires:
+			Administrator permission, to stop users from cheating (but not admins ;))
+	"""
 	global RIGGED
 	author = ctx.message.author
 	print("({}) {} used $rigg | Is admin: {}".format(author.id, author.name, author.top_role.permissions.administrator))
@@ -67,6 +95,12 @@ async def rigg(ctx):
 # If someone were to be so incredulous as to accuse the bot
 @bot.command()
 async def rigged(ctx):
+	"""
+	Rigged: 	
+			accuses the bot of being rigged, which is incredibly disrespectful *cough*
+	Requires:
+			Nothing
+	"""
 	author = ctx.message.author
 	print("({}) {} used $rigged".format(author.id, author.name))
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
@@ -74,6 +108,12 @@ async def rigged(ctx):
 # Dice game, most of the code is DB stuff
 @bot.command()
 async def dg(ctx, bet):
+	"""
+	dg: 	
+			rolls a 100-sided die with a provided bet, and pays out double if above 55.
+	Requires:
+			User must be registered and have a sufficient balance to play the game
+	"""
 	global RIGGED
 	global DB
 	global DBTMP
@@ -147,6 +187,12 @@ async def dg(ctx, bet):
 # Register a user to the bot DB
 @bot.command()
 async def register(ctx):
+	"""
+	Register: 	
+			registers the user who uses the command in the db and grants them a free ¤1000.
+	Requires:
+			Must not be registered already
+	"""
 	global DB
 	author = ctx.message.author
 	print("({}) {} used $register".format(author.id, author.name))
@@ -169,6 +215,12 @@ async def register(ctx):
 # Register another user to the bot DB
 @bot.command()
 async def register_other(ctx, user: discord.User):
+	"""
+	Register other: 	
+			registers another user in the db, mainly in case of.
+	Requires:
+			Administrator permission, no need for others to tag people constantly for no reason
+	"""
 	global DB
 	author = ctx.message.author
 	print("({}) {} used $register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, author.top_role.permissions.administrator))
@@ -194,6 +246,12 @@ async def register_other(ctx, user: discord.User):
 # Show a user their balance
 @bot.command()
 async def bal(ctx):
+	"""
+	Bal: 	
+			responds with the users balance.
+	Requires:
+			user must be registered
+	"""
 	global DB
 	author = ctx.message.author
 	print("({}) {} used $bal".format(author.id, author.name))
@@ -215,6 +273,13 @@ async def bal(ctx):
 # Get some debug info in the console
 @bot.command()
 async def debug(ctx):
+	"""
+	Debug: 	
+			prints the current db state and global information to the console, to aid in troubleshooting
+			db issues.
+	Requires:
+			Administrator permission, to stop users from spamming the console with debug info
+	"""
 	global DB
 	author = ctx.message.author
 	print("({}) {} used $debug | Is admin: {}".format(author.id, author.name, author.top_role.permissions.administrator))
@@ -243,6 +308,12 @@ async def debug(ctx):
 # Change someones balance
 @bot.command()
 async def update(ctx, user: discord.User, amount: int):
+	"""
+	Update: 	
+			gives the specified user <amount> extra ¤.
+	Requires:
+			Administrator permission, for what i hope is an obvious reason
+	"""
 	global RIGGED
 	global DB
 	global DBTMP
