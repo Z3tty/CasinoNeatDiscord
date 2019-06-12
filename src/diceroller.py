@@ -73,6 +73,7 @@ async def help(ctx):
 	msg.add_field(name="$register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
 	msg.add_field(name="$debug", value="(ADMIN) DB debug command", inline=False)
 	msg.add_field(name="$update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
+	msg.add_field(name="$raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
 	await ctx.send(embed=msg)
 	
 
