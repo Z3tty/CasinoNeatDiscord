@@ -112,9 +112,10 @@ async def rigg(ctx):
 	"""
 	global RIGGED
 	author = ctx.message.author
-	print("({}) {} used $rigg | Is admin: {}".format(author.id, author.name, author.top_role.permissions.administrator))
+	is_admin: bool = author.top_role.permissions.administrator
+	print("({}) {} used $rigg | Is admin: {}".format(author.id, author.name, is_admin))
 	# Dont want the plebians to do this
-	if author.top_role.permissions.administrator:
+	if is_admin:
 		RIGGED = True
 		print("It'll be our little secret ;)")
 		# Hide the evidence
@@ -254,8 +255,9 @@ async def register_other(ctx, user: discord.User):
 	"""
 	global DB
 	author = ctx.message.author
-	print("({}) {} used $register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, author.top_role.permissions.administrator))
-	if author.top_role.permissions.administrator:
+	is_admin: bool = author.top_role.permissions.administrator
+	print("({}) {} used $register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, is_admin))
+	if is_admin:
 		line: str = "0000000000000"
 		with open(DB, "r+") as db: # ah shit, here we go again
 			while line != "":
@@ -313,9 +315,10 @@ async def debug(ctx):
 	"""
 	global DB
 	author = ctx.message.author
-	print("({}) {} used $debug | Is admin: {}".format(author.id, author.name, author.top_role.permissions.administrator))
+	is_admin: bool = author.top_role.permissions.administrator
+	print("({}) {} used $debug | Is admin: {}".format(author.id, author.name, is_admin))
 	# I really dont want people to spam debug info
-	if author.top_role.permissions.administrator:
+	if is_admin:
 		registered_users: int = 0
 		total_balance: int = 0
 		line: str = "0000000000000"
@@ -349,9 +352,10 @@ async def update(ctx, user: discord.User, amount: int):
 	global DB
 	global DBTMP
 	author = ctx.message.author
-	print("({}) {} used $update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, author.top_role.permissions.administrator))
+	is_admin: bool = author.top_role.permissions.administrator
+	print("({}) {} used $update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
 	# I really dont want normal people to do this
-	if author.top_role.permissions.administrator:
+	if is_admin:
 		line = "0000000000"
 		# HERE WE GOOO
 		with open(DB, "r+") as db:
