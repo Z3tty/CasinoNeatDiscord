@@ -404,5 +404,29 @@ async def raffle(ctx, prize: int):
 			await ctx.send("```Error finding winner of raffle!```")
 			return
 
+@bot.command()
+async def order(ctx, drink: str = "empty"):
+	author = ctx.message.author
+	# Dict would be preferable but I'm tired and just want to iterate
+	drinks: list = ["beer", "cider", "wine", "rum", "vodka", "whiskey"]
+	prices: list = [5, 5, 10, 12, 12, 15]
+	if drink == "empty":
+		await ctx.send("What can I getcha?")
+		await ctx.send("I currently have ...")
+		i = 0
+		while i < (len(drinks)):
+			await ctx.send("{} for ¤{}".format(drinks[i], prices[i]))
+			i += 1
+	else:
+		if drink in drinks:
+			price = prices[drinks.index(drink)]
+			update_success: bool = update_db(author.id, price, True, False)
+			if update_success:
+				await ctx.send("```You buy a glass of {} for ¤{}, and down it in a single gulp. You feel scammed.```".format(drink, price))
+			else:
+				await ctx.send("```You either cant afford that drink, or you dont even have an account```")
+		else:
+			await ctx.send("```I'm sorry, but I dont know how to make that drink```")
+	
 
 bot.run(TOKEN)
