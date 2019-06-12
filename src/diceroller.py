@@ -61,6 +61,7 @@ async def help(ctx):
 	msg.add_field(name="?rigged", value="How dare you!", inline=False)
 	msg.add_field(name="?dg <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
 	msg.add_field(name="?register", value="Registers you in the DB, requirement for gambling", inline=False)
+	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
 	msg.add_field(name="?register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
 	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
 	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
