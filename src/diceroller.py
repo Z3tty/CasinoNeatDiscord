@@ -21,16 +21,7 @@ from datetime import datetime
 # Logging
 import logging
 
-info_logger = logging.getLogger('discord')
-info_logger.setLevel(logging.INFO)
-debug_logger = logging.getLogger('discord')
-debug_logger.setLevel(logging.DEBUG)
-info_handler = logging.FileHandler(filename='logs/info.cnlog', encoding='utf-8', mode='w')
-debug_handler = logging.FileHandler(filename='logs/debug.cnlog', encoding='utf-8', mode='w')
-info_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-info_logger.addHandler(info_handler)
-debug_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-debug_logger.addHandler(debug_handler)
+logging.basicConfig(level=logging.ERROR)
 
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?')
