@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.CRITICAL)
 
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?')
-client = discord.Client()
+
 RIGGED = False
 DB = "DB/database.cndb"
 DBTMP = "DB/tmp.cncrypt"
@@ -408,6 +408,7 @@ async def raffle(ctx, prize: int):
 @bot.command()
 async def order(ctx, drink: str = "empty"):
 	author = ctx.message.author
+	print("({}) {} used ?order for a glass of {}".format(author.id, author.name, drink))
 	# Dict would be preferable but I'm tired and just want to iterate
 	drinks: list = ["beer", "cider", "wine", "rum", "vodka", "whiskey"]
 	prices: list = [5, 5, 10, 12, 12, 15]
