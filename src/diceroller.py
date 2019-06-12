@@ -33,7 +33,7 @@ debug_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s
 debug_logger.addHandler(debug_handler)
 
 # Bot setup, and global variables that make things easier for me
-bot = commands.Bot(command_prefix='$')
+bot = commands.Bot(command_prefix='?')
 client = discord.Client()
 RIGGED = False
 DB = "DB/database.cndb"
@@ -62,20 +62,69 @@ async def help(ctx):
 	Requires:
 			Nothing
 	"""
-	print("({}) {} used $help".format(ctx.message.author.id, ctx.message.author.name))
+	print("({}) {} used ?help".format(ctx.message.author.id, ctx.message.author.name))
 	msg = discord.Embed(title="CN Diceroller", description="Commands:", color=0xff00ff)
-	msg.add_field(name="$help", value="Displays this message", inline=False)
-	msg.add_field(name="$roll <sides>", value="Rolls a variable-sided die and prints the result", inline=False)
-	msg.add_field(name="$rigg", value="Nice try", inline=False)
-	msg.add_field(name="$rigged", value="How dare you!", inline=False)
-	msg.add_field(name="$dg <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
-	msg.add_field(name="$register", value="Registers you in the DB, requirement for gambling", inline=False)
-	msg.add_field(name="$register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
-	msg.add_field(name="$debug", value="(ADMIN) DB debug command", inline=False)
-	msg.add_field(name="$update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
-	msg.add_field(name="$raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
+	msg.add_field(name="?help", value="Displays this message", inline=False)
+	msg.add_field(name="?roll <sides>", value="Rolls a variable-sided die and prints the result", inline=False)
+	msg.add_field(name="?rigg", value="Nice try", inline=False)
+	msg.add_field(name="?rigged", value="How dare you!", inline=False)
+	msg.add_field(name="?dg <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
+	msg.add_field(name="?register", value="Registers you in the DB, requirement for gambling", inline=False)
+	msg.add_field(name="?register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
+	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
+	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
+	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
 	await ctx.send(embed=msg)
-	
+
+# Helper function. Does all of the interfacing between the bot and the DB
+def update_db(userid, amount: int, sub: bool) -> bool:
+	global DB
+	global DBTMP
+	line = "0000000000"
+	# HERE WE GOOO
+	with open(DB, "r+") as db:
+		while line != "":
+			try: # Use exceptions to find the EOF
+				line = db.readline()
+				if str(userid) in line: # If we found the user
+					split: list = line.split("/") # Get the balance and id seperately
+					bal: str = split[1] 
+					print("Old balance: {}".format(bal))
+					if int(bal) < amount: # cant bet more than you have
+						print("Balance not high enough")
+						return False
+					if sub:
+						bal = str(int(bal) - amount) # lol loser
+					else:
+						bal = str(int(bal) + amount) # gg no re
+					print("New balance: {}".format(bal))
+					newline = str(userid) + "/" + str(bal) # make the new db entry
+					tmpdata = "0000000"
+					with open(DBTMP, "w") as clear: # clear the tmp file, just in case
+						clear.write("")
+					with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
+						with open(DB, "r+") as db:
+							while tmpdata != "":
+								dbline = db.readline()
+								tmpdata = dbline
+								if dbline == line:			# write the new line instead of the old one
+									tmp.write(newline+"\n")
+								else:
+									tmp.write(dbline+"\n")
+					tmpdata = "0000000"
+					with open(DB, "w") as clear:		# clear the db
+						clear.write("")
+					with open(DB, "r+") as db:			# rewrite the db for future use
+						with open(DBTMP, "r+") as tmp:
+							while tmpdata != "":
+								tmpdata = tmp.readline()
+								if(tmpdata != "\n"): db.write(tmpdata)
+					with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
+						clear.write("")
+					return True
+			except StopIteration:
+				print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
+				return False
 
 # Roll a dice with a variable amount of sides
 @bot.command()
@@ -88,7 +137,7 @@ async def roll(ctx, max: int):
 	"""
 	global RIGGED
 	author = ctx.message.author
-	print("({}) {} used $roll with {} sides".format(author.id, author.name, max))
+	print("({}) {} used ?roll with {} sides".format(author.id, author.name, max))
 	if max <= 1:
 		# Someone will definitely attempt to roll a "0 sided die" and thats dumb
 		await ctx.send("```Are you braindead? Do you not know how dice work?```")
@@ -114,7 +163,7 @@ async def rigg(ctx):
 	global RIGGED
 	author = ctx.message.author
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used $rigg | Is admin: {}".format(author.id, author.name, is_admin))
+	print("({}) {} used ?rigg | Is admin: {}".format(author.id, author.name, is_admin))
 	# Dont want the plebians to do this
 	if is_admin:
 		RIGGED = True
@@ -136,7 +185,7 @@ async def rigged(ctx):
 			Nothing
 	"""
 	author = ctx.message.author
-	print("({}) {} used $rigged".format(author.id, author.name))
+	print("({}) {} used ?rigged".format(author.id, author.name))
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
 # Dice game, most of the code is DB stuff
@@ -149,10 +198,8 @@ async def dg(ctx, bet):
 			User must be registered and have a sufficient balance to play the game
 	"""
 	global RIGGED
-	global DB
-	global DBTMP
 	author = ctx.message.author
-	print("({}) {} used $dg for ¤{}".format(author.id, author.name, bet))
+	print("({}) {} used ?dg for ¤{}".format(author.id, author.name, bet))
 	# get the current userid (db stuff)
 	if RIGGED:
 		# make sure we win if its rigged
@@ -165,57 +212,24 @@ async def dg(ctx, bet):
 		roll = random.randint(1, 100)
 		# debug info
 		print("{} rolled a {} in DG, Rigged: {}".format(ctx.message.author.name, roll, RIGGED))
-	line = "0000000000"
-	# HERE WE GOOO
-	with open(DB, "r+") as db:
-		while line != "":
-			try: # Use exceptions to find the EOF
-				line = db.readline()
-				if str(author.id) in line: # If we found the user
-					split: list = line.split("/") # Get the balance and id seperately
-					bal: str = split[1] 
-					balint = int(bal)
-					print("Old balance: {}".format(balint))
-					if balint < int(bet): # cant bet more than you have
-						await ctx.send("```Illegal bet -  You dont have that much!```")
-						return
-					if roll <= 55:
-						balint -= int(bet) # lol loser
-						await ctx.send("```I'm sorry {}, you lose with a roll of {}, losing ¤{}```".format(ctx.message.author.name, roll, bet))
-					else:
-						balint += int(bet) # gg no re
-						await ctx.send("```Congrats {}, you win with a roll of {}, earning ¤{}```".format(ctx.message.author.name, roll, bet))
-					print("New balance: {}".format(balint))
-					bal = str(balint)
-					split[1] = bal
-					newline = split[0] + "/" + split[1] # make the new db entry
-					tmpdata = "0000000"
-					with open(DBTMP, "w") as clear: # clear the tmp file, just in case
-						clear.write("")
-					with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
-						with open(DB, "r+") as db:
-							while tmpdata != "":
-								dbline = db.readline()
-								tmpdata = dbline
-								if dbline == line:			# write the new line instead of the old one
-									tmp.write(newline+"\n")
-								else:
-									tmp.write(dbline+"\n")
-					tmpdata = "0000000"
-					with open(DB, "w") as clear:		# clear the db
-						clear.write("")
-					with open(DB, "r+") as db:			# rewrite the db for future use
-						with open(DBTMP, "r+") as tmp:
-							while tmpdata != "":
-								tmpdata = tmp.readline()
-								if(tmpdata != "\n"): db.write(tmpdata)
-					with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
-						clear.write("")
-					return
-			except StopIteration:
-				print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
-				await ctx.send("```Trying to gamble without money is kinda dumb```")
-				return
+	update_success: bool = False
+	if roll <= 55:
+		update_success = update_db(author.id, int(bet), True)
+		if update_success:
+			await ctx.send("```I'm sorry, you just lost ¤{} with a roll of {}```".format(bet, roll))
+			return
+		else:
+			await ctx.send("```You're either not registered(?register) or you do not have enough money to place that bet```")
+			return
+	else:
+		update_success = update_db(author.id, int(bet), False)
+		if update_success:
+			await ctx.send("```Congrats, you just won ¤{} with a roll of {}```".format(bet, roll))
+			return
+		else:
+			await ctx.send("```You're either not registered(?register) or you do not have enough money to place that bet```")
+			return
+
 
 # Register a user to the bot DB
 @bot.command()
@@ -228,7 +242,7 @@ async def register(ctx):
 	"""
 	global DB
 	author = ctx.message.author
-	print("({}) {} used $register".format(author.id, author.name))
+	print("({}) {} used ?register".format(author.id, author.name))
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
 		while line != "":
@@ -257,7 +271,7 @@ async def register_other(ctx, user: discord.User):
 	global DB
 	author = ctx.message.author
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used $register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, is_admin))
+	print("({}) {} used ?register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, is_admin))
 	if is_admin:
 		line: str = "0000000000000"
 		with open(DB, "r+") as db: # ah shit, here we go again
@@ -288,7 +302,7 @@ async def bal(ctx):
 	"""
 	global DB
 	author = ctx.message.author
-	print("({}) {} used $bal".format(author.id, author.name))
+	print("({}) {} used ?bal".format(author.id, author.name))
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # getting really tired of file i/o
 		while line != "":
@@ -317,7 +331,7 @@ async def debug(ctx):
 	global DB
 	author = ctx.message.author
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used $debug | Is admin: {}".format(author.id, author.name, is_admin))
+	print("({}) {} used ?debug | Is admin: {}".format(author.id, author.name, is_admin))
 	# I really dont want people to spam debug info
 	if is_admin:
 		registered_users: int = 0
@@ -349,58 +363,18 @@ async def update(ctx, user: discord.User, amount: int):
 	Requires:
 			Administrator permission, for what i hope is an obvious reason. User must also be registered
 	"""
-	global RIGGED
-	global DB
-	global DBTMP
 	author = ctx.message.author
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used $update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
+	print("({}) {} used ?update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
 	# I really dont want normal people to do this
 	if is_admin:
-		line = "0000000000"
-		# HERE WE GOOO
-		with open(DB, "r+") as db:
-			while line != "":
-				try: # Use exceptions to find the EOF
-					line = db.readline()
-					if str(user.id) in line: # If we found the user
-						print("User found for update ({})".format(user.id))
-						split: list = line.split("/") # Get the balance and id seperately
-						bal: str = split[1] 
-						balint = int(bal)
-						print("Old balance: {}".format(balint))
-						balint += amount
-						await ctx.send("```Balance of {} updated, You now have ¤{}```".format(user.name, balint))
-						print("New balance: {}".format(balint))
-						bal = str(balint)
-						newline = str(user.id) + "/" + bal # make the new db entry
-						tmpdata = "0000000"
-						with open(DBTMP, "w") as clear: # clear the tmp file, just in case
-							clear.write("")
-						with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
-							with open(DB, "r+") as db:
-								while tmpdata != "":
-									dbline = db.readline()
-									tmpdata = dbline
-									if dbline == line:			# write the new line instead of the old one
-										tmp.write(newline+"\n")
-									else:
-										tmp.write(dbline+"\n")
-						tmpdata = "0000000"
-						with open(DB, "w") as clear:		# clear the db
-							clear.write("")
-						with open(DB, "r+") as db:			# rewrite the db for future use
-							with open(DBTMP, "r+") as tmp:
-								while tmpdata != "":
-									tmpdata = tmp.readline()
-									if(tmpdata != "\n"): db.write(tmpdata)
-						with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
-							clear.write("")
-						return
-				except StopIteration:
-					print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
-					await ctx.send("```They need an account to be eligible for a balance update```")
-					return
+		update_success: bool = update_db(user.id, amount, False)
+		if update_success:
+			await ctx.send("```Added ¤{} to {}'s balance```".format(amount, user.name))
+			return
+		else:
+			await ctx.send("```I cant update a nonexistant balance! (?register)```")
+			return
 	else:
 		await ctx.send("```Thats a no from me dawg```")
 
@@ -411,7 +385,7 @@ async def raffle(ctx, prize: int):
 	author = ctx.message.author
 	is_admin: bool = author.top_role.permissions.administrator
 	winner_id = ""
-	print("({}) {} used $raffle for ¤{} | Is admin: {}".format(author.id, author.name, prize, is_admin))
+	print("({}) {} used ?raffle for ¤{} | Is admin: {}".format(author.id, author.name, prize, is_admin))
 	if is_admin:
 		user_ids: list = []
 		line: str = "000000000"
@@ -429,51 +403,15 @@ async def raffle(ctx, prize: int):
 						if current_id != "": user_ids.append(current_id)
 					except StopIteration:
 						print("Hit end of db search")
-			roll = random.randint(0, len(user_ids))
+			roll = random.randint(0, len(user_ids) -1)
 			winner_id = user_ids[roll]
-		line = "0000000"
-		with open(DB, "r+") as db:
-			while line != "":
-				try: # Use exceptions to find the EOF
-					line = db.readline()
-					if winner_id in line: # If we found the user
-						split: list = line.split("/") # Get the balance and id seperately
-						bal: str = split[1] 
-						balint = int(bal)
-						print("Winner is {}".format(winner_id))
-						print("Old balance: {}".format(balint))
-						balint += prize
-						await ctx.send("**Congrats <@{}>! You just won ¤{}**".format(winner_id, prize))
-						print("New balance: {}".format(balint))
-						bal = str(balint)
-						newline = winner_id + "/" + bal # make the new db entry
-						tmpdata = "0000000"
-						with open(DBTMP, "w") as clear: # clear the tmp file, just in case
-							clear.write("")
-						with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
-							with open(DB, "r+") as db:
-								while tmpdata != "":
-									dbline = db.readline()
-									tmpdata = dbline
-									if dbline == line:			# write the new line instead of the old one
-										tmp.write(newline+"\n")
-									else:
-										tmp.write(dbline+"\n")
-						tmpdata = "0000000"
-						with open(DB, "w") as clear:		# clear the db
-							clear.write("")
-						with open(DB, "r+") as db:			# rewrite the db for future use
-							with open(DBTMP, "r+") as tmp:
-								while tmpdata != "":
-									tmpdata = tmp.readline()
-									if(tmpdata != "\n"): db.write(tmpdata)
-						with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
-							clear.write("")
-						return
-				except StopIteration:
-					print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
-					await ctx.send("```They need an account to be eligible for a raffle win (i.e. something went wrong)```")
-					return
+		update_success: bool = update_db(winner_id, prize, False)
+		if update_success:
+			await ctx.send("**Congratulations, <@{}>! You just won ¤{} in the raffle hosted by {}**".format(winner_id, prize, author.name))
+			return
+		else:
+			await ctx.send("```Error finding winner of raffle!```")
+			return
 
 
 bot.run(TOKEN)
