@@ -20,6 +20,9 @@ from discord.ext import commands
 from datetime import datetime
 # Logging
 import logging
+logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.CRITICAL)
 
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?')
@@ -39,10 +42,6 @@ async def on_ready():
 	date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
 	print("Setup complete -- Ready to cheat on dicerolls\t\t\t\t\t\t{}".format(date_time))
 	print("--------------------------------------------------------------------------------------------------------------")
-
-logging.basicConfig(level=logging.WARNING)
-logging.basicConfig(level=logging.ERROR)
-logging.basicConfig(level=logging.CRITICAL)
 
 bot.remove_command('help')
 # An help
