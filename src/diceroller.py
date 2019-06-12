@@ -188,6 +188,8 @@ async def register_other(ctx, user: discord.User):
 					print("End of file hit in DB search")
 			db.write(str(user.id) + "/1000\n")
 		await ctx.send("**User {} has been registered!**".format(user.mention))
+	else:
+		await ctx.send("```You dont look like an admin to me```")
 
 # Show a user their balance
 @bot.command()
