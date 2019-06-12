@@ -17,7 +17,7 @@
 import discord
 import random
 from discord.ext import commands
-
+from datetime import datetime
 # Logging
 import logging
 
@@ -43,6 +43,38 @@ DBTMP = "DB/tmp.cncrypt"
 TOKEN = ""
 with open("enc/token.cncrypt", "r+") as tfile:
 	TOKEN = tfile.readline()
+
+@bot.event
+async def on_ready():
+	now = datetime.now()
+	date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
+	print("Thank you for using this incredibly strange bot!")
+	print("Setup complete -- Ready to cheat on dicerolls\t\t\t\t\t\t{}".format(date_time))
+	print("--------------------------------------------------------------------------------------------------------------")
+
+bot.remove_command('help')
+# An help
+@bot.command()
+async def help(ctx):
+	"""
+	help: 	
+			displays a help message
+	Requires:
+			Nothing
+	"""
+	print("({}) {} used $help".format(ctx.message.author.id, ctx.message.author.name))
+	msg = discord.Embed(title="CN Diceroller", description="Commands:", color=0xff00ff)
+	msg.add_field(name="$help", value="Displays this message", inline=False)
+	msg.add_field(name="$roll <sides>", value="Rolls a variable-sided die and prints the result", inline=False)
+	msg.add_field(name="$rigg", value="Nice try", inline=False)
+	msg.add_field(name="$rigged", value="How dare you!", inline=False)
+	msg.add_field(name="$dg <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
+	msg.add_field(name="$register", value="Registers you in the DB, requirement for gambling", inline=False)
+	msg.add_field(name="$register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
+	msg.add_field(name="$debug", value="(ADMIN) DB debug command", inline=False)
+	msg.add_field(name="$update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
+	await ctx.send(embed=msg)
+	
 
 # Roll a dice with a variable amount of sides
 @bot.command()
@@ -177,7 +209,6 @@ async def dg(ctx, bet):
 								if(tmpdata != "\n"): db.write(tmpdata)
 					with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
 						clear.write("")
-						print("Cleared TMP")
 					return
 			except StopIteration:
 				print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
@@ -312,7 +343,7 @@ async def update(ctx, user: discord.User, amount: int):
 	Update: 	
 			gives the specified user <amount> extra ¤.
 	Requires:
-			Administrator permission, for what i hope is an obvious reason
+			Administrator permission, for what i hope is an obvious reason. User must also be registered
 	"""
 	global RIGGED
 	global DB
@@ -360,7 +391,6 @@ async def update(ctx, user: discord.User, amount: int):
 									if(tmpdata != "\n"): db.write(tmpdata)
 						with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
 							clear.write("")
-							print("Cleared TMP")
 						return
 				except StopIteration:
 					print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
