@@ -77,7 +77,7 @@ async def help(ctx):
 	await ctx.send(embed=msg)
 
 # Helper function. Does all of the interfacing between the bot and the DB
-def update_db(userid, amount: int, sub: bool) -> bool:
+def update_db(userid, amount: int, sub: bool, isBet: bool = False) -> bool:
 	global DB
 	global DBTMP
 	line = "0000000000"
@@ -90,7 +90,7 @@ def update_db(userid, amount: int, sub: bool) -> bool:
 					split: list = line.split("/") # Get the balance and id seperately
 					bal: str = split[1] 
 					print("Old balance: {}".format(bal))
-					if int(bal) < amount: # cant bet more than you have
+					if int(bal) < amount and not isBet: # cant bet more than you have
 						print("Balance not high enough")
 						return False
 					if sub:
@@ -368,7 +368,7 @@ async def update(ctx, user: discord.User, amount: int):
 	print("({}) {} used ?update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
 	# I really dont want normal people to do this
 	if is_admin:
-		update_success: bool = update_db(user.id, amount, False)
+		update_success: bool = update_db(user.id, amount, False, True)
 		if update_success:
 			await ctx.send("```Added ¤{} to {}'s balance```".format(amount, user.name))
 			return
