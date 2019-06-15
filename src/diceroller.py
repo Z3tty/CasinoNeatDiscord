@@ -17,6 +17,7 @@
 import discord
 import random
 from discord.ext import commands
+from discord.ext.commands import CommandNotFound
 from datetime import datetime
 # Logging
 import logging
@@ -26,6 +27,12 @@ logging.basicConfig(level=logging.CRITICAL)
 
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?')
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    raise error
 
 RIGGED = False
 DB = "DB/database.cndb"
@@ -54,14 +61,15 @@ async def help(ctx):
 			Nothing
 	"""
 	print("({}) {} used ?help".format(ctx.message.author.id, ctx.message.author.name))
-	msg = discord.Embed(title="CN Diceroller", description="Commands:", color=0xff00ff)
+	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
 	msg.add_field(name="?help", value="Displays this message", inline=False)
 	msg.add_field(name="?roll <sides>", value="Rolls a variable-sided die and prints the result", inline=False)
 	msg.add_field(name="?rigg", value="Nice try", inline=False)
 	msg.add_field(name="?rigged", value="How dare you!", inline=False)
-	msg.add_field(name="?dg <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
+	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
 	msg.add_field(name="?register", value="Registers you in the DB, requirement for gambling", inline=False)
 	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
+	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money", inline=False)
 	msg.add_field(name="?register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
 	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
 	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
@@ -182,7 +190,7 @@ async def rigged(ctx):
 
 # Dice game, most of the code is DB stuff
 @bot.command()
-async def dg(ctx, bet):
+async def gamble(ctx, bet):
 	"""
 	dg: 	
 			rolls a 100-sided die with a provided bet, and pays out double if above 55.
@@ -404,6 +412,29 @@ async def raffle(ctx, prize: int):
 		else:
 			await ctx.send("```Error finding winner of raffle!```")
 			return
+@bot.command()
+async def pay(ctx, user: discord.User, amount: int):
+	user_from = ctx.message.author
+	user_to   = user
+	print("({}) {} used ?pay to transfer ¤{} to ({}) {}".format(user_from.id, user_from.name, amount, user_to.id, user_to.name))
+	update_success_deduct: bool = update_db(user_from.id, amount, True)
+	if update_success_deduct:
+		update_success_increase: bool = update_db(user_to.id, amount, False, False)
+		if update_success_increase:
+			await ctx.send("```{} successfully sent ¤{} to {}!```".format(user_from.name, amount, user_to.name))
+			return
+		else:
+			update_success_reset: bool = update_db(user_from.id, amount, False, False)
+			if update_success_reset:
+				await ctx.send("```Error during transfer, you have not been charged```")
+				return
+			else:
+				await ctx.send("```Error during transfer, you HAVE been charged, please contact an admin```")
+				return
+	else:
+		await ctx.send("```Error withdrawing funds. Do you have enough?```")
+		return
+
 
 @bot.command()
 async def order(ctx, drink: str = "empty"):
@@ -420,8 +451,8 @@ async def order(ctx, drink: str = "empty"):
 			await ctx.send("{} for ¤{}".format(drinks[i], prices[i]))
 			i += 1
 	else:
-		if drink in drinks:
-			price = prices[drinks.index(drink)]
+		if drink.lower() in drinks:
+			price = prices[drinks.index(drink.lower())]
 			update_success: bool = update_db(author.id, price, True)
 			if update_success:
 				await ctx.send("```You buy a glass of {} for ¤{}, and down it in a single gulp. You feel scammed.```".format(drink, price))
