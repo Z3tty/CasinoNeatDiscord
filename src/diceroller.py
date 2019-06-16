@@ -18,6 +18,12 @@ import discord
 import random
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
+"""	Voice Support
+import ctypes
+opus = ctypes.util.find_library("opus")
+print(opus)
+discord.opus.load_opus(opus)
+"""
 from datetime import datetime
 # Logging
 import logging
@@ -412,6 +418,7 @@ async def raffle(ctx, prize: int):
 		else:
 			await ctx.send("```Error finding winner of raffle!```")
 			return
+			
 @bot.command()
 async def pay(ctx, user: discord.User, amount: int):
 	user_from = ctx.message.author
@@ -460,6 +467,21 @@ async def order(ctx, drink: str = "empty"):
 				await ctx.send("```You either cant afford that drink, or you dont even have an account```")
 		else:
 			await ctx.send("```I'm sorry, but I dont know how to make that drink```")
-	
-
+""" Playing music - Requires PyNACL and Opus
+@bot.command()
+async def play(ctx, url: str):
+	author = ctx.message.author
+	print("({}) {} used ?play with url: {}".format(author.id, author.name, url))
+	if url.startswith("http:"):
+		await ctx.send("```Excuse me, I'm not an idiot, use a secure protocol please (url starts with http:)```")
+		return
+	if url.startswith("https://you") or url.startswith("https://www.you"):
+		channel = author.voice.channel
+		vc = await bot.join_voice_channel(channel)
+		player = await vc.create_ytdl_player(url)
+		player.start()
+	else:
+		await ctx.send("```That doesnt look like youtube to me ...```")
+		return
+"""
 bot.run(TOKEN)
