@@ -386,6 +386,12 @@ async def update(ctx, user: discord.User, amount: int):
 
 @bot.command()
 async def raffle(ctx, prize: int):
+	"""
+	Raffle:
+			give a prize amount to a random registered user.
+	Requires:
+			Administrator permission, to avoid effectively destroying the economy. Users must be registered, prize amount must be given.
+	"""
 	global DB
 	global RIGGED
 	author = ctx.message.author
@@ -421,6 +427,12 @@ async def raffle(ctx, prize: int):
 			
 @bot.command()
 async def pay(ctx, user: discord.User, amount: int):
+	"""
+	Pay:
+			Give another user money from your own balance.
+	Requires:
+			The user to pay, the amount to pay, and a balance that covers the amount.
+	"""
 	user_from = ctx.message.author
 	user_to   = user
 	print("({}) {} used ?pay to transfer ¤{} to ({}) {}".format(user_from.id, user_from.name, amount, user_to.id, user_to.name))
@@ -445,6 +457,12 @@ async def pay(ctx, user: discord.User, amount: int):
 
 @bot.command()
 async def order(ctx, drink: str = "empty"):
+	"""
+	Order:
+			Order a functionally non-existant drink with no effects.
+	Requires:
+			Enough money to buy the required drink, aswell as the drink to buy.
+	"""
 	author = ctx.message.author
 	print("({}) {} used ?order for a glass of {}".format(author.id, author.name, drink))
 	# Dict would be preferable but I'm tired and just want to iterate
