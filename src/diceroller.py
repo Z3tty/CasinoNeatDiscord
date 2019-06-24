@@ -69,7 +69,7 @@ async def help(ctx):
 	print("({}) {} used ?help".format(ctx.message.author.id, ctx.message.author.name))
 	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
 	msg.add_field(name="?help", value="Displays this message", inline=False)
-	msg.add_field(name="?roll <sides>", value="Rolls a variable-sided die and prints the result", inline=False)
+	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result", inline=False)
 	msg.add_field(name="?rigg", value="Nice try", inline=False)
 	msg.add_field(name="?rigged", value="How dare you!", inline=False)
 	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
@@ -134,28 +134,42 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 
 # Roll a dice with a variable amount of sides
 @bot.command()
-async def roll(ctx, max: int):
+async def roll(ctx, dice: int = 1, sides: int = 6):
 	"""
 	Roll: 	
-			performs a riggable roll, printing the result in the chat used, utilizing the sides provided.
+			performs a riggable roll, printing the result in the chat used, utilizing the sides and dicecount provided.
 	Requires:
 			Nothing
 	"""
 	global RIGGED
 	author = ctx.message.author
-	print("({}) {} used ?roll with {} sides".format(author.id, author.name, max))
-	if max <= 1:
-		# Someone will definitely attempt to roll a "0 sided die" and thats dumb
-		await ctx.send("```Are you braindead? Do you not know how dice work?```")
-		return
-	roll = random.randint(1, max)
-	if RIGGED:
-		# If you wanna rigg a throw, make sure it always gets the max
-		await ctx.send('```Rolled a {}```'.format(max))
-		RIGGED = False
-		print("Rig successfull, returning to standard, boring \"FAIR\" mode.")
+	print("({}) {} used ?roll for {} dice with {} sides".format(author.id, author.name, dice, sides))
+	if dice == 1:
+		if sides <= 1:
+			# Someone will definitely attempt to roll a "0 sided die" and thats dumb
+			await ctx.send("```Are you braindead? Do you not know how dice work?```")
+			return
+		roll = random.randint(1, sides)
+		if RIGGED:
+			# If you wanna rigg a throw, make sure it always gets the max
+			await ctx.send('```Rolled a {}```'.format(sides))
+			RIGGED = False
+			print("Rig successfull, returning to standard, boring \"FAIR\" mode.")
+		else:
+			await ctx.send("```Rolled a {}```".format(roll))
 	else:
-		await ctx.send("```Rolled a {}```".format(roll))
+		dicerolls: list = []
+		i = 0
+		for i in range(dice):
+			if RIGGED:
+				if sides > 2:
+					dicerolls.append(random.randint(sides - 1, sides))
+				else:
+					dicerolls.append(sides)
+			else:
+				dicerolls.append(random.randint(1, sides))
+		RIGGED = False
+		await ctx.send("```Rolled: {} - {}d{}```".format(dicerolls, dice, sides))
 
 # Rigg the next roll
 @bot.command()
