@@ -143,7 +143,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 	"""
 	global RIGGED
 	author = ctx.message.author
-	print("({}) {} used ?roll for {} dice with {} sides".format(author.id, author.name, dice, sides))
+	print("({}) {} used ?roll for {} dice with {} sides | Rigged: {}".format(author.id, author.name, dice, sides, RIGGED))
 	if dice == 1:
 		if sides <= 1:
 			# Someone will definitely attempt to roll a "0 sided die" and thats dumb
@@ -152,11 +152,11 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 		roll = random.randint(1, sides)
 		if RIGGED:
 			# If you wanna rigg a throw, make sure it always gets the max
-			await ctx.send('```Rolled a {}```'.format(sides))
+			await ctx.send('```Rolled a {} - {}d{}```'.format(sides, dice, sides))
 			RIGGED = False
 			print("Rig successfull, returning to standard, boring \"FAIR\" mode.")
 		else:
-			await ctx.send("```Rolled a {}```".format(roll))
+			await ctx.send("```Rolled a {} - {}d{}```".format(roll, dice, sides))
 	else:
 		dicerolls: list = []
 		i = 0
