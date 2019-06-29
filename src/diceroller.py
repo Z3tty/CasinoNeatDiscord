@@ -499,6 +499,49 @@ async def order(ctx, drink: str = "empty"):
 				await ctx.send("```You either cant afford that drink, or you dont even have an account```")
 		else:
 			await ctx.send("```I'm sorry, but I dont know how to make that drink```")
+
+@bot.command()
+async def insult(ctx, *args):
+	"""
+	Insult:
+			Insult someone by name.
+	Requires:
+			Some(one/thing) to insult
+	"""
+	author = ctx.message.author
+	name: str = ""
+	for arg in args:
+		name += str(arg)
+		name += " "
+	name = name.rstrip()
+	print("({}) {} used ?insult to insult {}".format(author.id, author.name, name))
+	# Insults are composed in the pattern (P N F), where the name N is provided to the function.
+	# Adding insults to the preamble P and finisher F lists, will result in more diverse insults.
+	# Make sure to add them according to the already established pattern.
+	preambles: list = [
+						"Why dont you choke on an icecube, ",
+						"I can see why your parents had a divorce, ",
+						"I hope you melt in the sun like the snowflake you are, ",
+						"If there ever was a reason to sue the company that made your dad's condom, it would be you, ",
+						"Honestly, I'd rather pet a putrid furry than stand within 30 ft. of you, "
+					]
+	plen: int = len(preambles) - 1
+	finishers: list = [
+						", you're the reason aliens wont visit us.",
+						", hope you weren't vaccinated.",
+						", you quaking soyboy.",
+						", damn disgrace.",
+						", they use your face for chastity propaganda."
+					]
+	# Saving the indices for the console message later
+	flen: int = len(finishers) - 1
+	pidx: int = random.randint(0, plen)
+	fidx: int = random.randint(0, flen)
+	msg: str = (preambles[pidx] + name + finishers[fidx])
+	print("Composed insult : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
+	await ctx.send("```{}```".format(msg))
+
+
 """ Playing music - Requires PyNACL and Opus
 @bot.command()
 async def play(ctx, url: str):
