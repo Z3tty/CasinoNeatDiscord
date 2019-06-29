@@ -520,10 +520,13 @@ async def insult(ctx, *args):
 	# Make sure to add them according to the already established pattern.
 	preambles: list = [
 						"Why dont you choke on an icecube, ",
-						"I can see why your parents had a divorce, ",
+						"I can see why you were abandoned as a kid, ",
 						"I hope you melt in the sun like the snowflake you are, ",
 						"If there ever was a reason to sue the company that made your dad's condom, it would be you, ",
-						"Honestly, I'd rather pet a putrid furry than stand within 30 ft. of you, "
+						"Honestly, I'd rather pet a putrid furry than stand within 30 ft. of you, ",
+						"Its ok, if I were you I'd be sad too, ",
+						"The landfill you were born in deserves a refund, ",
+						"I sure hope there ain't a God, cause wow he hates us if he let you step foot on this earth, "
 					]
 	plen: int = len(preambles) - 1
 	finishers: list = [
@@ -532,6 +535,10 @@ async def insult(ctx, *args):
 						", you quaking soyboy.",
 						", damn disgrace.",
 						", they use your face for chastity propaganda."
+						", trashlord.",
+						", bloated dumpsterkid.",
+						", you sad, failed abortion.",
+						", its like you rolled a nat 1 on life."
 					]
 	# Saving the indices for the console message later
 	flen: int = len(finishers) - 1
@@ -541,6 +548,50 @@ async def insult(ctx, *args):
 	print("Composed insult : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
 	await ctx.send("```{}```".format(msg))
 
+@bot.command()
+async def compliment(ctx, *args):
+	"""
+	Compliment:
+			Compliment someone by name.
+	Requires:
+			Some(one/thing) to compliment
+	"""
+	author = ctx.message.author
+	name: str = ""
+	for arg in args:
+		name += str(arg)
+		name += " "
+	name = name.rstrip()
+	print("({}) {} used ?compliment to compliment {}".format(author.id, author.name, name))
+	# Compliments are composed just like insults are.
+	preambles: list = [
+						"I hope you've had a wonderful day, ",
+						"Your parents love you, and even if they dont, I sure do ",
+						"You're the standard others strive to reach, ",
+						"I'm glad you exist, ",
+						"Hugging through cyberspace is kinda hard, but you'd deserve it ",
+						"I wish I was as cool as you, ",
+						"You're the gift that keeps on giving, ",
+						"You might be the closes we've ever come to irrefutable evidence there is a benevolent God out there, "
+					]
+	plen: int = len(preambles) - 1
+	finishers: list = [
+						", you light up the room.",
+						", hope you were vaccinated.",
+						", you're pretty neat.",
+						", I'm so proud of you.",
+						", your personality is magnetic.",
+						", you must've rolled a nat 20 on life.",
+						", I love your company!",
+						", I wish you the best!"
+					]
+	# Saving the indices for the console message later
+	flen: int = len(finishers) - 1
+	pidx: int = random.randint(0, plen)
+	fidx: int = random.randint(0, flen)
+	msg: str = (preambles[pidx] + name + finishers[fidx])
+	print("Composed compliment : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
+	await ctx.send("```{}```".format(msg))
 
 """ Playing music - Requires PyNACL and Opus
 @bot.command()
