@@ -58,7 +58,7 @@ async def on_ready():
 
 bot.remove_command('help')
 # An help
-@bot.command()
+@bot.command(aliases=['h', 'info', 'commands', 'c'])
 async def help(ctx):
 	"""
 	help: 	
@@ -135,7 +135,7 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 				return False
 
 # Roll a dice with a variable amount of sides
-@bot.command()
+@bot.command(aliases=['r'])
 async def roll(ctx, dice: int = 1, sides: int = 6):
 	"""
 	Roll: 	
@@ -211,7 +211,7 @@ async def rigged(ctx):
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
 # Dice game, most of the code is DB stuff
-@bot.command()
+@bot.command(aliases=['55', '55x2', 'g', 'dg', 'bet'])
 async def gamble(ctx, bet):
 	"""
 	dg: 	
@@ -254,7 +254,7 @@ async def gamble(ctx, bet):
 
 
 # Register a user to the bot DB
-@bot.command()
+@bot.command(aliases=['reg'])
 async def register(ctx):
 	"""
 	Register: 	
@@ -314,7 +314,7 @@ async def register_other(ctx, user: discord.User):
 		await ctx.send("```You dont look like an admin to me```")
 
 # Show a user their balance
-@bot.command()
+@bot.command(aliases=['money', 'balance', 'eco'])
 async def bal(ctx):
 	"""
 	Bal: 	
@@ -441,7 +441,7 @@ async def raffle(ctx, prize: int):
 			await ctx.send("```Error finding winner of raffle!```")
 			return
 			
-@bot.command()
+@bot.command(aliases=['give'])
 async def pay(ctx, user: discord.User, amount: int):
 	"""
 	Pay:
@@ -536,7 +536,7 @@ async def insult(ctx, *args):
 						", hope you weren't vaccinated.",
 						", you quaking soyboy.",
 						", damn disgrace.",
-						", they use your face for chastity propaganda."
+						", they use your face for chastity propaganda.",
 						", trashlord.",
 						", bloated dumpsterkid.",
 						", you sad, failed abortion.",
@@ -574,7 +574,7 @@ async def compliment(ctx, *args):
 						"Hugging through cyberspace is kinda hard, but you'd deserve it ",
 						"I wish I was as cool as you, ",
 						"You're the gift that keeps on giving, ",
-						"You might be the closes we've ever come to irrefutable evidence there is a benevolent God out there, "
+						"You might be the closest we've ever come to irrefutable evidence that there is a benevolent God out there, "
 					]
 	plen: int = len(preambles) - 1
 	finishers: list = [
