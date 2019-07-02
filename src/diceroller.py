@@ -90,18 +90,17 @@ async def help(ctx):
 	"""
 	print("({}) {} used ?help".format(ctx.message.author.id, ctx.message.author.name))
 	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
-	msg.add_field(name="?help", value="Displays this message", inline=False)
-	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result", inline=False)
+	msg.add_field(name="?help", value="Displays this message. Alias=[h, info, commands, c]", inline=False)
+	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result. Alias=[r]", inline=False)
 	msg.add_field(name="?rigg", value="Nice try", inline=False)
 	msg.add_field(name="?rigged", value="How dare you!", inline=False)
-	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win", inline=False)
-	msg.add_field(name="?register", value="Registers you in the DB, requirement for gambling", inline=False)
+	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win. Alias=[55, 55x2, g, dg, bet]", inline=False)
+	msg.add_field(name="?bal", value="Shows you how much money you have. Alias=[balance, eco, money]", inline=False)
 	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
-	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money", inline=False)
+	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money. Alias=[give]", inline=False)
 	msg.add_field(name="?insult <name>", value="Generate an insult aimed at someone", inline=False)
 	msg.add_field(name="?compliment <name>", value="Generate a compliment aimed at someone", inline=False)
 	msg.add_field(name="?grab", value="Used to grab a randomly spawned event amount", inline=False)
-	msg.add_field(name="?register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
 	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
 	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
 	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
@@ -110,7 +109,6 @@ async def help(ctx):
 # Helper function. Registers a user to the bot DB
 def register(user):
 	global DB
-	print("({}) {} used ?register".format(user.id, user.name))
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
 		while line != "":
@@ -118,7 +116,6 @@ def register(user):
 				line = db.readline()		# check users
 				if str(user.id) in line:
 					split: list = line.split("/")
-					print("({}) {} is already registered".format(user.id, user.name))
 					return None
 			except StopIteration:			# register them if they're not in the DB
 				print("End of file hit in DB search")
@@ -138,15 +135,12 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 				if str(userid) in line: # If we found the user
 					split: list = line.split("/") # Get the balance and id seperately
 					bal: str = split[1] 
-					print("Old balance: {}".format(bal))
 					if int(bal) < amount and isBet: # cant bet more than you have
-						print("Balance not high enough")
 						return False
 					if sub:
 						bal = str(int(bal) - amount) # lol loser
 					else:
 						bal = str(int(bal) + amount) # gg no re
-					print("New balance: {}".format(bal))
 					newline = str(userid) + "/" + str(bal) # make the new db entry
 					tmpdata = "0000000"
 					with open(DBTMP, "w") as clear: # clear the tmp file, just in case
@@ -172,7 +166,6 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 						clear.write("")
 					return True
 			except StopIteration:
-				print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
 				return False
 
 @bot.command()
