@@ -43,6 +43,8 @@ async def on_command_error(ctx, error):
 RIGGED = False
 DB = "DB/database.cndb"
 DBTMP = "DB/tmp.cncrypt"
+RANDOM_EVENT_CURRENTLY = False
+RANDOM_EVENT_AMOUNT = 0
 
 # OC dont steal
 TOKEN = ""
@@ -52,9 +54,29 @@ with open("enc/token.cncrypt", "r+") as tfile:
 @bot.event
 async def on_ready():
 	now = datetime.now()
-	date_time = now.strftime("%m/%d/%Y, %H:%M:%S")
-	print("Setup complete -- Ready to cheat on dicerolls\t\t\t\t\t\t{}".format(date_time))
+	game = discord.Game("with probabilities")
+	await bot.change_presence(status=discord.Status.online, activity=game)
+	date_time = now.strftime("%d/%m/%Y, %H:%M:%S")
+	print("Bot connected \t\t\t\t\t\t\t\t\t{} [V:ALPHA]".format(date_time))
 	print("--------------------------------------------------------------------------------------------------------------")
+
+@bot.event
+async def on_message(message):
+	global RANDOM_EVENT_CURRENTLY
+	global RANDOM_EVENT_AMOUNT
+	rnd = random.randint(0, 5000)
+	if rnd < 100:
+		RANDOM_EVENT_CURRENTLY = True
+		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
+		print("Random event for {} created".format(RANDOM_EVENT_AMOUNT))
+		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
+	author = message.author
+	if not author.bot:
+		print("({}) {} > {}".format(author.id, author.name, message.content))
+	else:
+		print("[BOT] {}: {}".format(author.name, message.content))
+	await bot.process_commands(message)
+
 
 bot.remove_command('help')
 # An help
@@ -134,6 +156,22 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 				print("End of file hit in DB search")	# EOF, tell them off for big dumbdumb
 				return False
 
+@bot.command()
+async def grab(ctx):
+	global RANDOM_EVENT_AMOUNT
+	global RANDOM_EVENT_CURRENTLY
+	author = ctx.author
+	if RANDOM_EVENT_CURRENTLY:
+		update_success: bool = update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
+		if update_success:
+			RANDOM_EVENT_CURRENTLY = False
+			await ctx.send("```Congrats to {}, for grabbing that free ¤{}```".format(author.name, RANDOM_EVENT_AMOUNT))
+			RANDOM_EVENT_AMOUNT = 0
+		else:
+			await ctx.send("```Error updating DB, are you registered?```")
+	else:
+		await ctx.send("```Theres no random event, currently```")
+
 # Roll a dice with a variable amount of sides
 @bot.command(aliases=['r'])
 async def roll(ctx, dice: int = 1, sides: int = 6):
@@ -212,7 +250,7 @@ async def rigged(ctx):
 
 # Dice game, most of the code is DB stuff
 @bot.command(aliases=['55', '55x2', 'g', 'dg', 'bet'])
-async def gamble(ctx, bet):
+async def gamble(ctx, bet: int = 0):
 	"""
 	dg: 	
 			rolls a 100-sided die with a provided bet, and pays out double if above 55.
@@ -222,6 +260,9 @@ async def gamble(ctx, bet):
 	global RIGGED
 	author = ctx.message.author
 	print("({}) {} used ?dg for ¤{}".format(author.id, author.name, bet))
+	if bet <= 0:
+		await ctx.send("```You need to actually supply a bet, y'know```")
+		return
 	# get the current userid (db stuff)
 	if RIGGED:
 		# make sure we win if its rigged
