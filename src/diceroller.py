@@ -100,6 +100,7 @@ async def help(ctx):
 	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money", inline=False)
 	msg.add_field(name="?insult <name>", value="Generate an insult aimed at someone", inline=False)
 	msg.add_field(name="?compliment <name>", value="Generate a compliment aimed at someone", inline=False)
+	msg.add_field(name="?grab", value="Used to grab a randomly spawned event amount", inline=False)
 	msg.add_field(name="?register_other <@user>", value="(ADMIN) Registers someone else, in case of error", inline=False)
 	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
 	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
@@ -523,7 +524,14 @@ async def order(ctx, drink: str = "empty"):
 	author = ctx.message.author
 	print("({}) {} used ?order for a glass of {}".format(author.id, author.name, drink))
 	# Dict would be preferable but I'm tired and just want to iterate
-	drinks: list = ["beer", "cider", "wine", "rum", "vodka", "whiskey"]
+	drinks: list = [
+					"beer", 
+					"cider", 
+					"wine", 
+					"rum", 
+					"vodka", 
+					"whiskey"
+	]
 	prices: list = [5, 5, 10, 12, 12, 15]
 	if drink == "empty":
 		await ctx.send("What can I getcha?")
@@ -653,4 +661,5 @@ async def play(ctx, url: str):
 		await ctx.send("```That doesnt look like youtube to me ...```")
 		return
 """
+
 bot.run(TOKEN)
