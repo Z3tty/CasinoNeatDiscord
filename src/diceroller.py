@@ -107,6 +107,24 @@ async def help(ctx):
 	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
 	await ctx.send(embed=msg)
 
+# Helper function. Registers a user to the bot DB
+def register(user):
+	global DB
+	print("({}) {} used ?register".format(user.id, user.name))
+	line: str = "0000000000000"
+	with open(DB, "r+") as db: # ah shit, here we go again
+		while line != "":
+			try:
+				line = db.readline()		# check users
+				if str(user.id) in line:
+					split: list = line.split("/")
+					print("({}) {} is already registered".format(user.id, user.name))
+					return None
+			except StopIteration:			# register them if they're not in the DB
+				print("End of file hit in DB search")
+		db.write(str(user.id) + "/1000\n")
+	return ("```User {} has been registered!```".format(user.name))
+
 # Helper function. Does all of the interfacing between the bot and the DB
 def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 	global DB
@@ -162,6 +180,9 @@ async def grab(ctx):
 	global RANDOM_EVENT_AMOUNT
 	global RANDOM_EVENT_CURRENTLY
 	author = ctx.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	if RANDOM_EVENT_CURRENTLY:
 		update_success: bool = update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
 		if update_success:
@@ -169,7 +190,7 @@ async def grab(ctx):
 			await ctx.send("```Congrats to {}, for grabbing that free ¤{}```".format(author.name, RANDOM_EVENT_AMOUNT))
 			RANDOM_EVENT_AMOUNT = 0
 		else:
-			await ctx.send("```Error updating DB, are you registered?```")
+			await ctx.send("```Error updating DB```")
 	else:
 		await ctx.send("```Theres no random event, currently```")
 
@@ -184,6 +205,9 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 	"""
 	global RIGGED
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?roll for {} dice with {} sides | Rigged: {}".format(author.id, author.name, dice, sides, RIGGED))
 	if dice == 1:
 		if sides <= 1:
@@ -223,6 +247,9 @@ async def rigg(ctx):
 	"""
 	global RIGGED
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	print("({}) {} used ?rigg | Is admin: {}".format(author.id, author.name, is_admin))
 	# Dont want the plebians to do this
@@ -246,6 +273,9 @@ async def rigged(ctx):
 			Nothing
 	"""
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?rigged".format(author.id, author.name))
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
@@ -260,6 +290,9 @@ async def gamble(ctx, bet: int = 0):
 	"""
 	global RIGGED
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?dg for ¤{}".format(author.id, author.name, bet))
 	if bet <= 0:
 		await ctx.send("```You need to actually supply a bet, y'know```")
@@ -294,67 +327,6 @@ async def gamble(ctx, bet: int = 0):
 			await ctx.send("```You're either not registered(?register) or you do not have enough money to place that bet```")
 			return
 
-
-# Register a user to the bot DB
-@bot.command(aliases=['reg'])
-async def register(ctx):
-	"""
-	Register: 	
-			registers the user who uses the command in the db and grants them a free ¤1000.
-	Requires:
-			Must not be registered already
-	"""
-	global DB
-	author = ctx.message.author
-	print("({}) {} used ?register".format(author.id, author.name))
-	line: str = "0000000000000"
-	with open(DB, "r+") as db: # ah shit, here we go again
-		while line != "":
-			try:
-				line = db.readline()		# check users
-				if str(author.id) in line:
-					split: list = line.split("/")
-					print("({}) {} is already registered".format(author.id, author.name))
-					bal: str = split[1]		# registering someone twice would be stupid
-					await ctx.send("```You're already registered, {}! You have ¤{} currently```".format(author.name, bal))
-					return
-			except StopIteration:			# register them if they're not in the DB
-				print("End of file hit in DB search")
-		db.write(str(author.id) + "/1000\n")
-	await ctx.send("**User {} has been registered!**".format(author.mention))
-
-# Register another user to the bot DB
-@bot.command()
-async def register_other(ctx, user: discord.User):
-	"""
-	Register other: 	
-			registers another user in the db, mainly in case of.
-	Requires:
-			Administrator permission, no need for others to tag people constantly for no reason
-	"""
-	global DB
-	author = ctx.message.author
-	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used ?register_other on ({}) {} | Is admin: {}".format(author.id, author.name, user.id, user.name, is_admin))
-	if is_admin:
-		line: str = "0000000000000"
-		with open(DB, "r+") as db: # ah shit, here we go again
-			while line != "":
-				try:
-					line = db.readline()		# check users
-					if str(user.id) in line:
-						split: list = line.split("/")
-						print("({}) {} is already registered".format(user.id, user.name))
-						bal: str = split[1]		# registering someone twice would be stupid
-						await ctx.send("```{} is already registered! They have ¤{} currently```".format(user.name, bal))
-						return
-				except StopIteration:			# register them if they're not in the DB
-					print("End of file hit in DB search")
-			db.write(str(user.id) + "/1000\n")
-		await ctx.send("**User {} has been registered!**".format(user.mention))
-	else:
-		await ctx.send("```You dont look like an admin to me```")
-
 # Show a user their balance
 @bot.command(aliases=['money', 'balance', 'eco'])
 async def bal(ctx):
@@ -366,6 +338,9 @@ async def bal(ctx):
 	"""
 	global DB
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?bal".format(author.id, author.name))
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # getting really tired of file i/o
@@ -394,6 +369,9 @@ async def debug(ctx):
 	"""
 	global DB
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	print("({}) {} used ?debug | Is admin: {}".format(author.id, author.name, is_admin))
 	# I really dont want people to spam debug info
@@ -428,6 +406,9 @@ async def update(ctx, user: discord.User, amount: int):
 			Administrator permission, for what i hope is an obvious reason. User must also be registered
 	"""
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	print("({}) {} used ?update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
 	# I really dont want normal people to do this
@@ -453,6 +434,9 @@ async def raffle(ctx, prize: int):
 	global DB
 	global RIGGED
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	winner_id = ""
 	print("({}) {} used ?raffle for ¤{} | Is admin: {}".format(author.id, author.name, prize, is_admin))
@@ -493,6 +477,12 @@ async def pay(ctx, user: discord.User, amount: int):
 	"""
 	user_from = ctx.message.author
 	user_to   = user
+	msg = register(user_from)
+	if msg != None:
+		await ctx.send(msg)
+	msg = register(user_to)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?pay to transfer ¤{} to ({}) {}".format(user_from.id, user_from.name, amount, user_to.id, user_to.name))
 	update_success_deduct: bool = update_db(user_from.id, amount, True)
 	if update_success_deduct:
@@ -522,6 +512,9 @@ async def order(ctx, drink: str = "empty"):
 			Enough money to buy the required drink, aswell as the drink to buy.
 	"""
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?order for a glass of {}".format(author.id, author.name, drink))
 	# Dict would be preferable but I'm tired and just want to iterate
 	drinks: list = [
@@ -560,6 +553,9 @@ async def insult(ctx, *args):
 			Some(one/thing) to insult
 	"""
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	name: str = ""
 	for arg in args:
 		name += str(arg)
@@ -608,6 +604,9 @@ async def compliment(ctx, *args):
 			Some(one/thing) to compliment
 	"""
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	name: str = ""
 	for arg in args:
 		name += str(arg)
@@ -648,6 +647,9 @@ async def compliment(ctx, *args):
 @bot.command()
 async def play(ctx, url: str):
 	author = ctx.message.author
+	msg = register(author)
+	if msg != None:
+		await ctx.send(msg)
 	print("({}) {} used ?play with url: {}".format(author.id, author.name, url))
 	if url.startswith("http:"):
 		await ctx.send("```Excuse me, I'm not an idiot, use a secure protocol please (url starts with http:)```")
@@ -661,5 +663,4 @@ async def play(ctx, url: str):
 		await ctx.send("```That doesnt look like youtube to me ...```")
 		return
 """
-
 bot.run(TOKEN)
