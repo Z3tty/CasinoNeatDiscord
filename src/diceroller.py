@@ -18,12 +18,8 @@ import discord
 import random
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
-"""	Voice Support
-import ctypes
-opus = ctypes.util.find_library("opus")
-print(opus)
-discord.opus.load_opus(opus)
-"""
+from discord.voice_client import VoiceClient
+
 from datetime import datetime
 # Logging
 import logging
@@ -636,7 +632,15 @@ async def compliment(ctx, *args):
 	print("Composed compliment : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
 	await ctx.send("```{}```".format(msg))
 
-""" Playing music - Requires PyNACL and Opus
+
+# Playing music - Requires PyNACL and Opus
+""" To play youtube videos:
+1) Verify the string
+2) Download the video
+3) Convert it to mp3
+4) Play it locally
+5) Verify that it has ended
+6) Delete the downloaded video
 @bot.command()
 async def play(ctx, url: str):
 	author = ctx.message.author
@@ -648,10 +652,12 @@ async def play(ctx, url: str):
 		await ctx.send("```Excuse me, I'm not an idiot, use a secure protocol please (url starts with http:)```")
 		return
 	if url.startswith("https://you") or url.startswith("https://www.you"):
-		channel = author.voice.channel
-		vc = await bot.join_voice_channel(channel)
-		player = await vc.create_ytdl_player(url)
-		player.start()
+		if author.voice:
+			channel = author.voice.channel
+			vc = await channel.connect()
+			vc.play(discord.FFmpegPCMAudio('testing.mp3'), after=lambda e: await disconnect(True))
+		else:
+			await ctx.send("```You must be in a VC to play music```")
 	else:
 		await ctx.send("```That doesnt look like youtube to me ...```")
 		return
