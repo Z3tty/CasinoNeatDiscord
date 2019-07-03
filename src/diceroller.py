@@ -35,17 +35,15 @@ logging.basicConfig(level=logging.CRITICAL)
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?', case_insensitive=True)
 
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, CommandNotFound):
-        return
-    raise error
-
-RIGGED = False
-DB = "DB/database.cndb"
-DBTMP = "DB/tmp.cncrypt"
-RANDOM_EVENT_CURRENTLY = False
-RANDOM_EVENT_AMOUNT = 0
+# I'm really sorry but globals are really the easiest way of handling this
+RIGGED 					= False
+DB 						= "DB/database.cndb"
+DBTMP 					= "DB/tmp.cncrypt"
+RANDOM_EVENT_CURRENTLY 	= False
+RANDOM_EVENT_AMOUNT 	= 0
+FILTER_USERS 			= False
+FILTER_BOTS  			= False
+FILTER_LOGS  			= False
 
 # OC dont steal
 TOKEN = ""
@@ -55,13 +53,18 @@ with open("enc/token.cncrypt", "r+") as tfile:
 # Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
 def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
 	global RIGGED
+	global FILTER_LOGS
+
 	is_admin: bool = author.top_role.permissions.administrator
-	print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\t#{}: ({}) {}: {}\n[DEBUG|LOG]\tRigged: {} - Admin: {}".format(source, author.id, author.name, msg, RIGGED, is_admin))
+	if not FILTER_LOGS:
+		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\t#{}: ({}) {}: {}\n[DEBUG|LOG]\tRigged: {} - Admin: {}".format(source, author.id, author.name, msg, RIGGED, is_admin))
+		print(S.RESET_ALL)
 
 
 # Helper function. Registers a user to the bot DB
 def register(user: discord.User):
 	global DB
+
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
 		while line != "":
@@ -71,14 +74,16 @@ def register(user: discord.User):
 					split: list = line.split("/")
 					return None
 			except StopIteration:			# register them if they're not in the DB
-				print("End of file hit in DB search")
+				debug_console_log("register", user, "Error: Hit EOF before end of loop")
 		db.write(str(user.id) + "/1000\n")
 	return ("```User {} has been registered!```".format(user.name))
+
 
 # Helper function. Does all of the interfacing between the bot and the DB
 def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 	global DB
 	global DBTMP
+
 	line = "0000000000"
 	# HERE WE GOOO
 	with open(DB, "r+") as db:
@@ -91,9 +96,9 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 					if int(bal) < amount and isBet: # cant bet more than you have
 						return False
 					if sub:
-						bal = str(int(bal) - amount) # lol loser
+						bal = str(int(bal) - amount)
 					else:
-						bal = str(int(bal) + amount) # gg no re
+						bal = str(int(bal) + amount)
 					newline = str(userid) + "/" + str(bal) # make the new db entry
 					tmpdata = "0000000"
 					with open(DBTMP, "w") as clear: # clear the tmp file, just in case
@@ -122,6 +127,14 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 				return False
 
 
+# Bot events
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    raise error
+
+
 @bot.event
 async def on_ready():
 	now = datetime.now()
@@ -131,26 +144,33 @@ async def on_ready():
 	print(S.BRIGHT + B.WHITE + F.BLUE + "Bot connected \t\t\t\t\t\t\t\t\t{} [V:ALPHA]".format(date_time))
 	print("--------------------------------------------------------------------------------------------------------------" + S.RESET_ALL)
 
+
 @bot.event
 async def on_message(message):
 	global RANDOM_EVENT_CURRENTLY
 	global RANDOM_EVENT_AMOUNT
+	global FILTER_LOGS
+	global FILTER_BOTS
+	global FILTER_USERS
+
 	rnd = random.randint(0, 5000)
 	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
 		RANDOM_EVENT_CURRENTLY = True
 		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
-		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
+		print(S.BRIGHT + F.YELLOW)
+		print("[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
 		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
 	author = message.author
-	if not author.bot:
-		print(S.BRIGHT + F.CYAN + "[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
-	else:
+	if not author.bot and not FILTER_USERS:
+		print(S.BRIGHT + F.CYAN)
+		print("[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
+	if author.bot and not FILTER_BOTS:
 		print(S.BRIGHT + F.MAGENTA + "[BOT]\t\t{}: {}".format(author.name, message.content))
 	await bot.process_commands(message)
 
 
 bot.remove_command('help')
-# An help
+# Help messages
 @bot.command(aliases=['h', 'info', 'commands', 'c'])
 async def help(ctx):
 	"""
@@ -160,27 +180,90 @@ async def help(ctx):
 			Nothing
 	"""
 	debug_console_log("help", ctx.message.author)
-	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
-	msg.add_field(name="?help", value="Displays this message. Alias=[h, info, commands, c]", inline=False)
-	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result. Alias=[r]", inline=False)
-	msg.add_field(name="?rigg", value="Nice try", inline=False)
-	msg.add_field(name="?rigged", value="How dare you!", inline=False)
-	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win. Alias=[55, 55x2, g, dg, bet]", inline=False)
-	msg.add_field(name="?bal", value="Shows you how much money you have. Alias=[balance, eco, money]", inline=False)
-	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
-	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money. Alias=[give]", inline=False)
-	msg.add_field(name="?insult <name>", value="Generate an insult aimed at someone", inline=False)
-	msg.add_field(name="?compliment <name>", value="Generate a compliment aimed at someone", inline=False)
-	msg.add_field(name="?grab", value="Used to grab a randomly spawned event amount", inline=False)
-	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
-	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
-	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
-	await ctx.send(embed=msg)
+	msg = discord.Embed(title="CN Diceroller", 			description="", 																					color=0xff00ff)
+	msg.add_field(		name="?help", 					value="Displays this message.\nAlias=[h, info, commands, c]", 										inline=False)
+	msg.add_field(		name="?roll <dice> <sides>", 	value="Rolls some variable-sided dice and prints the result.\nAlias=[r]", 							inline=False)
+	msg.add_field(		name="?rigg", 					value="Nice try", 																					inline=False)
+	msg.add_field(		name="?rigged", 				value="How dare you!", 																				inline=False)
+	msg.add_field(		name="?gamble <bet>", 			value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win.\nAlias=[55x2, g, bet]", inline=False)
+	msg.add_field(		name="?bal", 					value="Shows you how much money you have.\nAlias=[balance, eco, money]", 							inline=False)
+	msg.add_field(		name="?order <drink>", 			value="Buy a drink! userexperiencenotguaranteed", 													inline=False)
+	msg.add_field(		name="?pay <user> <amount>", 	value="Send someone your hard-earned money.\nAlias=[give]", 										inline=False)
+	msg.add_field(		name="?insult <name>", 			value="Generate an insult aimed at someone", 														inline=False)
+	msg.add_field(		name="?compliment <name>", 		value="Generate a compliment aimed at someone", 													inline=False)
+	msg.add_field(		name="?grab", 					value="Used to grab a randomly spawned event amount", 												inline=False)
+	msg.add_field(		name="?adminhelp", 				value="Show admin-only commands", 																	inline=False)
+	await ctx.send(		embed=msg)
+
+
+@bot.command()
+async def adminhelp(ctx):
+	"""
+	adminhelp: 	
+			displays a help message for administrators
+	Requires:
+			Nothing
+	"""
+	debug_console_log("adminhelp", ctx.message.author)
+	msg = discord.Embed(	title="CN Adminpanel", 				description="", 										color=0xff0000)
+	msg.add_field(			name="?debug", 						value="(ADMIN) DB debug command", 						inline=False)
+	msg.add_field(			name="?update <@user> <amount>", 	value="(ADMIN) Give a user the provided amount", 		inline=False)
+	msg.add_field(			name="?raffle <prizeamount>", 		value="(ADMIN) Gives a random registered user a prize", inline=False)
+	msg.add_field(			name="?filter <value>", 			value="(ADMIN) Filters console output.", 				inline=False)
+	filters = discord.Embed(title="CN Filters", 				description="A list of filters for the admin console", 	color=0x0000ff)
+	filters.add_field(		name="users", 						value="Toggles user messages on/off", 					inline=False)
+	filters.add_field(		name="bots", 						value="Toggles bot messages on/off", 					inline=False)
+	filters.add_field(		name="debug", 						value="Toggles debug messages on/off", 					inline=False)
+	filters.add_field(		name="all", 						value="Toggles all messages on", 						inline=False)
+	filters.add_field(		name="none", 						value="Toggles all messages off", 						inline=False)
+	await ctx.send(			embed=msg)
+	await ctx.send(			embed=filters)
+
+
+@bot.command()
+async def filter(ctx, f: str):
+	"""
+	filter: 	
+			filters console messages
+	Requires:
+			Administrator
+	"""
+	global FILTER_USERS
+	global FILTER_LOGS
+	global FILTER_BOTS
+
+	debug_console_log("filter", ctx.message.author, "Filter: {}".format(f))
+	is_admin: bool = ctx.message.author.top_role.permissions.administrator
+	if is_admin:
+		f = f.lower()
+		if f == "users":
+			FILTER_USERS	= not FILTER_USERS
+			await ctx.send("```Filter switched! Showing users : {}```".format(not FILTER_USERS))
+		elif f == "bots":
+			FILTER_BOTS 	= not FILTER_BOTS
+			await ctx.send("```Filter switched! Showing bots : {}```".format(not FILTER_BOTS))
+		elif f == "debug":
+			FILTER_LOGS 	= not FILTER_LOGS
+			await ctx.send("```Filter switched! Showing logs : {}```".format(not FILTER_LOGS))
+		elif f == "all":
+			FILTER_USERS 	= False
+			FILTER_BOTS 	= False
+			FILTER_LOGS 	= False
+			await ctx.send("```Filters switched! Now showing all messages```")
+		elif f == "none":
+			FILTER_USERS 	= True
+			FILTER_BOTS 	= True
+			FILTER_LOGS 	= True
+			await ctx.send("```Filters switched! Now showing no messages```")
+		else:
+			await ctx.send("```Malformed argument - No such filter```")
+
 
 @bot.command()
 async def grab(ctx):
 	global RANDOM_EVENT_AMOUNT
 	global RANDOM_EVENT_CURRENTLY
+
 	author = ctx.author
 	msg = register(author)
 	debug_console_log("grab", author)
@@ -197,6 +280,7 @@ async def grab(ctx):
 	else:
 		await ctx.send("```Theres no random event, currently```")
 
+
 # Roll a dice with a variable amount of sides
 @bot.command(aliases=['r'])
 async def roll(ctx, dice: int = 1, sides: int = 6):
@@ -207,6 +291,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 			Nothing
 	"""
 	global RIGGED
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -239,6 +324,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 		RIGGED = False
 		await ctx.send("```Rolled: {} - {}d{}```".format(dicerolls, dice, sides))
 
+
 # Rigg the next roll
 @bot.command()
 async def rigg(ctx):
@@ -249,6 +335,7 @@ async def rigg(ctx):
 			Administrator permission, to stop users from cheating (but not admins ;))
 	"""
 	global RIGGED
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -262,6 +349,7 @@ async def rigg(ctx):
 		await ctx.message.delete()
 	else:
 		await ctx.send("```I'm deeply offended that you'd assume I have such functionality```")
+
 
 # If someone were to be so incredulous as to accuse the bot
 @bot.command()
@@ -279,16 +367,18 @@ async def rigged(ctx):
 	debug_console_log("rigged", author)
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
+
 # Dice game, most of the code is DB stuff
-@bot.command(aliases=['55', '55x2', 'g', 'dg', 'bet'])
+@bot.command(aliases=['55x2', 'g', 'bet'])
 async def gamble(ctx, bet: int = 0):
 	"""
-	dg: 	
+	gamble: 	
 			rolls a 100-sided die with a provided bet, and pays out double if above 55.
 	Requires:
 			User must be registered and have a sufficient balance to play the game
 	"""
 	global RIGGED
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -326,6 +416,7 @@ async def gamble(ctx, bet: int = 0):
 			await ctx.send("```You do not have enough money to place that bet```")
 			return
 
+
 # Show a user their balance
 @bot.command(aliases=['money', 'balance', 'eco'])
 async def bal(ctx):
@@ -336,6 +427,7 @@ async def bal(ctx):
 			user must be registered
 	"""
 	global DB
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -355,6 +447,7 @@ async def bal(ctx):
 				debug_console_log("bal", author, "Error: User not found")
 				await ctx.send("```Error retrieving balance```")
 
+
 # Get some debug info in the console
 @bot.command()
 async def debug(ctx):
@@ -366,6 +459,7 @@ async def debug(ctx):
 			Administrator permission, to stop users from spamming the console with debug info
 	"""
 	global DB
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -397,6 +491,7 @@ async def debug(ctx):
 		await ctx.send("```Nice try, pleb```")
 	print(S.RESET_ALL)
 
+
 # Change someones balance
 @bot.command()
 async def update(ctx, user: discord.User, amount: int):
@@ -424,6 +519,7 @@ async def update(ctx, user: discord.User, amount: int):
 	else:
 		await ctx.send("```Thats a no from me dawg```")
 
+
 @bot.command()
 async def raffle(ctx, prize: int):
 	"""
@@ -434,6 +530,7 @@ async def raffle(ctx, prize: int):
 	"""
 	global DB
 	global RIGGED
+
 	author = ctx.message.author
 	msg = register(author)
 	if msg != None:
@@ -466,7 +563,8 @@ async def raffle(ctx, prize: int):
 		else:
 			await ctx.send("```Error finding winner of raffle!```")
 			return
-			
+	
+
 @bot.command(aliases=['give'])
 async def pay(ctx, user: discord.User, amount: int):
 	"""
@@ -544,6 +642,7 @@ async def order(ctx, drink: str = "empty"):
 		else:
 			await ctx.send("```I'm sorry, but I dont know how to make that drink```")
 
+
 @bot.command()
 async def insult(ctx, *args):
 	"""
@@ -593,6 +692,7 @@ async def insult(ctx, *args):
 	msg: str = (preambles[pidx] + name + finishers[fidx])
 	await ctx.send("```{}```".format(msg))
 
+
 @bot.command()
 async def compliment(ctx, *args):
 	"""
@@ -639,34 +739,4 @@ async def compliment(ctx, *args):
 	msg: str = (preambles[pidx] + name + finishers[fidx])
 	await ctx.send("```{}```".format(msg))
 
-
-# Playing music - Requires PyNACL and Opus
-""" To play youtube videos:
-1) Verify the string
-2) Download the video
-3) Convert it to mp3
-4) Play it locally
-5) Verify that it has ended
-6) Delete the downloaded video
-@bot.command()
-async def play(ctx, url: str):
-	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
-	print("({}) {} used ?play with url: {}".format(author.id, author.name, url))
-	if url.startswith("http:"):
-		await ctx.send("```Excuse me, I'm not an idiot, use a secure protocol please (url starts with http:)```")
-		return
-	if url.startswith("https://you") or url.startswith("https://www.you"):
-		if author.voice:
-			channel = author.voice.channel
-			vc = await channel.connect()
-			vc.play(discord.FFmpegPCMAudio('testing.mp3'), after=lambda e: await disconnect(True))
-		else:
-			await ctx.send("```You must be in a VC to play music```")
-	else:
-		await ctx.send("```That doesnt look like youtube to me ...```")
-		return
-"""
 bot.run(TOKEN)
