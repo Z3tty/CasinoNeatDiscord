@@ -392,7 +392,7 @@ async def debug(ctx):
 					debug_console_log("debug", author, "Error: Hit EOF before end of loop")
 					break
 		print("Total users: {}\t\tTotal balance: ¤{}".format(registered_users, total_balance))
-		await ctx.send("```Info sent to the console! Current user count: {}, total balance: ¤{}".format(registered_users, total_balance))
+		await ctx.send("```Info sent to the console! Current user count: {}, total balance: ¤{}```".format(registered_users, total_balance))
 	else:
 		await ctx.send("```Nice try, pleb```")
 	print(S.RESET_ALL)
