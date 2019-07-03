@@ -391,7 +391,8 @@ async def debug(ctx):
 				except StopIteration:
 					debug_console_log("debug", author, "Error: Hit EOF before end of loop")
 					break
-		print("Total users: {}\t\tTotal balance: {}".format(registered_users, total_balance))
+		print("Total users: {}\t\tTotal balance: ¤{}".format(registered_users, total_balance))
+		await ctx.send("```Info sent to the console! Current user count: {}, total balance: ¤{}".format(registered_users, total_balance))
 	else:
 		await ctx.send("```Nice try, pleb```")
 	print(S.RESET_ALL)
@@ -482,7 +483,7 @@ async def pay(ctx, user: discord.User, amount: int):
 	msg = register(user_to)
 	if msg != None:
 		await ctx.send(msg)
-	debug_console_log("pay", author, "Target: ({}) {}, amount: ¤{}".format(user_to.id, user_to.name, amount))
+	debug_console_log("pay", user_from, "Target: ({}) {}, amount: ¤{}".format(user_to.id, user_to.name, amount))
 	update_success_deduct: bool = update_db(user_from.id, amount, True)
 	if update_success_deduct:
 		update_success_increase: bool = update_db(user_to.id, amount, False, False)
