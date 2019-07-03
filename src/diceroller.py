@@ -19,6 +19,11 @@ import random
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
 from discord.voice_client import VoiceClient
+from colorama import init
+init()
+from colorama import Fore as F
+from colorama import Style as S
+from colorama import Back as B
 
 from datetime import datetime
 # Logging
@@ -28,7 +33,7 @@ logging.basicConfig(level=logging.ERROR)
 logging.basicConfig(level=logging.CRITICAL)
 
 # Bot setup, and global variables that make things easier for me
-bot = commands.Bot(command_prefix='?')
+bot = commands.Bot(command_prefix='?', case_insensitive=True)
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -47,63 +52,15 @@ TOKEN = ""
 with open("enc/token.cncrypt", "r+") as tfile:
 	TOKEN = tfile.readline()
 
-@bot.event
-async def on_ready():
-	now = datetime.now()
-	game = discord.Game("with probabilities")
-	await bot.change_presence(status=discord.Status.online, activity=game)
-	date_time = now.strftime("%d/%m/%Y, %H:%M:%S")
-	print("Bot connected \t\t\t\t\t\t\t\t\t{} [V:ALPHA]".format(date_time))
-	print("--------------------------------------------------------------------------------------------------------------")
+# Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
+def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
+	global RIGGED
+	is_admin: bool = author.top_role.permissions.administrator
+	print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\t#{}: ({}) {}: {}\n[DEBUG|LOG]\tRigged: {} - Admin: {}".format(source, author.id, author.name, msg, RIGGED, is_admin))
 
-@bot.event
-async def on_message(message):
-	global RANDOM_EVENT_CURRENTLY
-	global RANDOM_EVENT_AMOUNT
-	rnd = random.randint(0, 5000)
-	if rnd < 100:
-		RANDOM_EVENT_CURRENTLY = True
-		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
-		print("Random event for {} created".format(RANDOM_EVENT_AMOUNT))
-		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
-	author = message.author
-	if not author.bot:
-		print("({}) {} > {}".format(author.id, author.name, message.content))
-	else:
-		print("[BOT] {}: {}".format(author.name, message.content))
-	await bot.process_commands(message)
-
-
-bot.remove_command('help')
-# An help
-@bot.command(aliases=['h', 'info', 'commands', 'c'])
-async def help(ctx):
-	"""
-	help: 	
-			displays a help message
-	Requires:
-			Nothing
-	"""
-	print("({}) {} used ?help".format(ctx.message.author.id, ctx.message.author.name))
-	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
-	msg.add_field(name="?help", value="Displays this message. Alias=[h, info, commands, c]", inline=False)
-	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result. Alias=[r]", inline=False)
-	msg.add_field(name="?rigg", value="Nice try", inline=False)
-	msg.add_field(name="?rigged", value="How dare you!", inline=False)
-	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win. Alias=[55, 55x2, g, dg, bet]", inline=False)
-	msg.add_field(name="?bal", value="Shows you how much money you have. Alias=[balance, eco, money]", inline=False)
-	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
-	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money. Alias=[give]", inline=False)
-	msg.add_field(name="?insult <name>", value="Generate an insult aimed at someone", inline=False)
-	msg.add_field(name="?compliment <name>", value="Generate a compliment aimed at someone", inline=False)
-	msg.add_field(name="?grab", value="Used to grab a randomly spawned event amount", inline=False)
-	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
-	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
-	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
-	await ctx.send(embed=msg)
 
 # Helper function. Registers a user to the bot DB
-def register(user):
+def register(user: discord.User):
 	global DB
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
@@ -164,12 +121,69 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 			except StopIteration:
 				return False
 
+
+@bot.event
+async def on_ready():
+	now = datetime.now()
+	game = discord.Game("with probabilities | ?help")
+	await bot.change_presence(status=discord.Status.online, activity=game)
+	date_time = now.strftime("%d/%m/%Y, %H:%M:%S")
+	print(S.BRIGHT + B.WHITE + F.BLUE + "Bot connected \t\t\t\t\t\t\t\t\t{} [V:ALPHA]".format(date_time))
+	print("--------------------------------------------------------------------------------------------------------------" + S.RESET_ALL)
+
+@bot.event
+async def on_message(message):
+	global RANDOM_EVENT_CURRENTLY
+	global RANDOM_EVENT_AMOUNT
+	rnd = random.randint(0, 5000)
+	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
+		RANDOM_EVENT_CURRENTLY = True
+		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
+		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
+		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
+	author = message.author
+	if not author.bot:
+		print(S.BRIGHT + F.CYAN + "[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
+	else:
+		print(S.BRIGHT + F.MAGENTA + "[BOT]\t\t{}: {}".format(author.name, message.content))
+	await bot.process_commands(message)
+
+
+bot.remove_command('help')
+# An help
+@bot.command(aliases=['h', 'info', 'commands', 'c'])
+async def help(ctx):
+	"""
+	help: 	
+			displays a help message
+	Requires:
+			Nothing
+	"""
+	debug_console_log("help", ctx.message.author)
+	msg = discord.Embed(title="CN Diceroller", description="", color=0xff00ff)
+	msg.add_field(name="?help", value="Displays this message. Alias=[h, info, commands, c]", inline=False)
+	msg.add_field(name="?roll <dice> <sides>", value="Rolls some variable-sided dice and prints the result. Alias=[r]", inline=False)
+	msg.add_field(name="?rigg", value="Nice try", inline=False)
+	msg.add_field(name="?rigged", value="How dare you!", inline=False)
+	msg.add_field(name="?gamble <bet>", value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win. Alias=[55, 55x2, g, dg, bet]", inline=False)
+	msg.add_field(name="?bal", value="Shows you how much money you have. Alias=[balance, eco, money]", inline=False)
+	msg.add_field(name="?order <drink>", value="Buy a drink! userexperiencenotguaranteed", inline=False)
+	msg.add_field(name="?pay <user> <amount>", value="Send someone your hard-earned money. Alias=[give]", inline=False)
+	msg.add_field(name="?insult <name>", value="Generate an insult aimed at someone", inline=False)
+	msg.add_field(name="?compliment <name>", value="Generate a compliment aimed at someone", inline=False)
+	msg.add_field(name="?grab", value="Used to grab a randomly spawned event amount", inline=False)
+	msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
+	msg.add_field(name="?update <@user> <amount>", value="(ADMIN) Give a user the provided amount", inline=False)
+	msg.add_field(name="?raffle <prizeamount>", value="(ADMIN) Gives a random registered user a prize", inline=False)
+	await ctx.send(embed=msg)
+
 @bot.command()
 async def grab(ctx):
 	global RANDOM_EVENT_AMOUNT
 	global RANDOM_EVENT_CURRENTLY
 	author = ctx.author
 	msg = register(author)
+	debug_console_log("grab", author)
 	if msg != None:
 		await ctx.send(msg)
 	if RANDOM_EVENT_CURRENTLY:
@@ -197,7 +211,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 	msg = register(author)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?roll for {} dice with {} sides | Rigged: {}".format(author.id, author.name, dice, sides, RIGGED))
+	debug_console_log("roll", author)
 	if dice == 1:
 		if sides <= 1:
 			# Someone will definitely attempt to roll a "0 sided die" and thats dumb
@@ -240,16 +254,13 @@ async def rigg(ctx):
 	if msg != None:
 		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used ?rigg | Is admin: {}".format(author.id, author.name, is_admin))
+	debug_console_log("rigg", author, "It'll be our little secret ;)")
 	# Dont want the plebians to do this
 	if is_admin:
 		RIGGED = True
-		print("It'll be our little secret ;)")
 		# Hide the evidence
 		await ctx.message.delete()
 	else:
-		# monkaS
-		print("{} is onto us, keep an eye out :eyes:".format(ctx.message.author.name))
 		await ctx.send("```I'm deeply offended that you'd assume I have such functionality```")
 
 # If someone were to be so incredulous as to accuse the bot
@@ -265,7 +276,7 @@ async def rigged(ctx):
 	msg = register(author)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?rigged".format(author.id, author.name))
+	debug_console_log("rigged", author)
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
 # Dice game, most of the code is DB stuff
@@ -282,30 +293,29 @@ async def gamble(ctx, bet: int = 0):
 	msg = register(author)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?dg for ¤{}".format(author.id, author.name, bet))
 	if bet <= 0:
 		await ctx.send("```You need to actually supply a bet, y'know```")
+		debug_console_log("gamble", author, "Malformed command argument")
 		return
 	# get the current userid (db stuff)
 	if RIGGED:
 		# make sure we win if its rigged
 		roll = random.randint(55, 100)
 		# debug info
-		print("{} rolled a {} in DG, Rigged: {}".format(ctx.message.author.name, roll, RIGGED))
 		RIGGED = False
 	else:
 		# fair and boring roll
 		roll = random.randint(1, 100)
 		# debug info
-		print("{} rolled a {} in DG, Rigged: {}".format(ctx.message.author.name, roll, RIGGED))
 	update_success: bool = False
+	debug_console_log("gamble", author, "¤{} | Won: {}".format(bet, roll > 55))
 	if roll <= 55:
 		update_success = update_db(author.id, int(bet), True)
 		if update_success:
 			await ctx.send("```I'm sorry, you just lost ¤{} with a roll of {}```".format(bet, roll))
 			return
 		else:
-			await ctx.send("```You're either not registered(?register) or you do not have enough money to place that bet```")
+			await ctx.send("```You do not have enough money to place that bet```")
 			return
 	else:
 		update_success = update_db(author.id, int(bet), False)
@@ -313,7 +323,7 @@ async def gamble(ctx, bet: int = 0):
 			await ctx.send("```Congrats, you just won ¤{} with a roll of {}```".format(bet, roll))
 			return
 		else:
-			await ctx.send("```You're either not registered(?register) or you do not have enough money to place that bet```")
+			await ctx.send("```You do not have enough money to place that bet```")
 			return
 
 # Show a user their balance
@@ -330,7 +340,6 @@ async def bal(ctx):
 	msg = register(author)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?bal".format(author.id, author.name))
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # getting really tired of file i/o
 		while line != "":
@@ -339,12 +348,12 @@ async def bal(ctx):
 				if str(author.id) in line:
 					split: list = line.split("/") # if we find them, respond with their balance and cease
 					bal: str = split[1]
-					print("({}) {} has ¤{}".format(author.id, author.name, bal))
+					debug_console_log("bal", author, "Has: ¤{}".format(bal))
 					await ctx.send("```{} has ¤{}```".format(author.name, bal))
 					return
 			except StopIteration:
-				print("End of file hit in DB search") # let them know if they're stupid
-				await ctx.send("```You have to be registered to have money, silly```")
+				debug_console_log("bal", author, "Error: User not found")
+				await ctx.send("```Error retrieving balance```")
 
 # Get some debug info in the console
 @bot.command()
@@ -362,12 +371,13 @@ async def debug(ctx):
 	if msg != None:
 		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used ?debug | Is admin: {}".format(author.id, author.name, is_admin))
+	debug_console_log("debug", author)
 	# I really dont want people to spam debug info
 	if is_admin:
 		registered_users: int = 0
 		total_balance: int = 0
 		line: str = "0000000000000"
+		print(S.BRIGHT + B.WHITE + F.BLUE)
 		with open(DB, "r+") as db: # getting really tired of file i/o
 			while line != "":
 				try:
@@ -377,13 +387,14 @@ async def debug(ctx):
 						bal: str = split[1]
 						registered_users += 1
 						total_balance += int(bal)
-						print("User: {} - Balance: ¤{}".format(split[0], bal))
+						print("User: {} - Balance: ¤{}".format(split[0].rstrip(), bal.rstrip()))
 				except StopIteration:
-					print("End of file hit in DB search") # in case the while fails
+					debug_console_log("debug", author, "Error: Hit EOF before end of loop")
 					break
 		print("Total users: {}\t\tTotal balance: {}".format(registered_users, total_balance))
 	else:
 		await ctx.send("```Nice try, pleb```")
+	print(S.RESET_ALL)
 
 # Change someones balance
 @bot.command()
@@ -399,7 +410,7 @@ async def update(ctx, user: discord.User, amount: int):
 	if msg != None:
 		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
-	print("({}) {} used ?update on ({}) {} for ¤{} | Is admin: {}".format(author.id, author.name, user.id, user.name, amount, is_admin))
+	debug_console_log("update", author, "Target: ({}) {}, update amount: ¤{}".format(user.id, user.name, amount))
 	# I really dont want normal people to do this
 	if is_admin:
 		update_success: bool = update_db(user.id, amount, False, False)
@@ -428,13 +439,12 @@ async def raffle(ctx, prize: int):
 		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	winner_id = ""
-	print("({}) {} used ?raffle for ¤{} | Is admin: {}".format(author.id, author.name, prize, is_admin))
+	debug_console_log("raffle", author)
 	if is_admin:
 		user_ids: list = []
 		line: str = "000000000"
 		if RIGGED:
 			winner_id = str(author.id)
-			print("Rigged for : {}".format(winner_id))
 			RIGGED = False
 		else:
 			with open(DB, "r+") as db:
@@ -445,7 +455,7 @@ async def raffle(ctx, prize: int):
 						current_id = split[0]
 						if current_id != "": user_ids.append(current_id)
 					except StopIteration:
-						print("Hit end of db search")
+						debug_console_log("raffle", author, "Error: Hit EOF before end of loop")
 			roll = random.randint(0, len(user_ids) -1)
 			winner_id = user_ids[roll]
 		update_success: bool = update_db(winner_id, prize, False, False)
@@ -472,7 +482,7 @@ async def pay(ctx, user: discord.User, amount: int):
 	msg = register(user_to)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?pay to transfer ¤{} to ({}) {}".format(user_from.id, user_from.name, amount, user_to.id, user_to.name))
+	debug_console_log("pay", author, "Target: ({}) {}, amount: ¤{}".format(user_to.id, user_to.name, amount))
 	update_success_deduct: bool = update_db(user_from.id, amount, True)
 	if update_success_deduct:
 		update_success_increase: bool = update_db(user_to.id, amount, False, False)
@@ -504,7 +514,7 @@ async def order(ctx, drink: str = "empty"):
 	msg = register(author)
 	if msg != None:
 		await ctx.send(msg)
-	print("({}) {} used ?order for a glass of {}".format(author.id, author.name, drink))
+	debug_console_log("order", author, "Drink: {}".format(drink))
 	# Dict would be preferable but I'm tired and just want to iterate
 	drinks: list = [
 					"beer", 
@@ -550,7 +560,7 @@ async def insult(ctx, *args):
 		name += str(arg)
 		name += " "
 	name = name.rstrip()
-	print("({}) {} used ?insult to insult {}".format(author.id, author.name, name))
+	debug_console_log("insult", author, "Target: {}".format(name))
 	# Insults are composed in the pattern (P N F), where the name N is provided to the function.
 	# Adding insults to the preamble P and finisher F lists, will result in more diverse insults.
 	# Make sure to add them according to the already established pattern.
@@ -576,12 +586,10 @@ async def insult(ctx, *args):
 						", you sad, failed abortion.",
 						", its like you rolled a nat 1 on life."
 					]
-	# Saving the indices for the console message later
 	flen: int = len(finishers) - 1
 	pidx: int = random.randint(0, plen)
 	fidx: int = random.randint(0, flen)
 	msg: str = (preambles[pidx] + name + finishers[fidx])
-	print("Composed insult : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
 	await ctx.send("```{}```".format(msg))
 
 @bot.command()
@@ -601,7 +609,7 @@ async def compliment(ctx, *args):
 		name += str(arg)
 		name += " "
 	name = name.rstrip()
-	print("({}) {} used ?compliment to compliment {}".format(author.id, author.name, name))
+	debug_console_log("compliment", author, "Target: {}".format(name))
 	# Compliments are composed just like insults are.
 	preambles: list = [
 						"I hope you've had a wonderful day, ",
@@ -624,12 +632,10 @@ async def compliment(ctx, *args):
 						", I love your company!",
 						", I wish you the best!"
 					]
-	# Saving the indices for the console message later
 	flen: int = len(finishers) - 1
 	pidx: int = random.randint(0, plen)
 	fidx: int = random.randint(0, flen)
 	msg: str = (preambles[pidx] + name + finishers[fidx])
-	print("Composed compliment : {} \n//(Preamble[{}/{}], Finisher[{}/{}])//".format(msg, pidx, plen, fidx, flen))
 	await ctx.send("```{}```".format(msg))
 
 
