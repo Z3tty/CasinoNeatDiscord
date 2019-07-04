@@ -58,7 +58,6 @@ def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
 	is_admin: bool = author.top_role.permissions.administrator
 	if not FILTER_LOGS:
 		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\t#{}: ({}) {}: {}\n[DEBUG|LOG]\tRigged: {} - Admin: {}".format(source, author.id, author.name, msg, RIGGED, is_admin))
-		print(S.RESET_ALL)
 
 
 # Helper function. Registers a user to the bot DB
@@ -157,13 +156,11 @@ async def on_message(message):
 	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
 		RANDOM_EVENT_CURRENTLY = True
 		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
-		print(S.BRIGHT + F.YELLOW)
-		print("[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
+		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
 		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
 	author = message.author
 	if not author.bot and not FILTER_USERS:
-		print(S.BRIGHT + F.CYAN)
-		print("[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
+		print(S.BRIGHT + F.CYAN + "[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
 	if author.bot and not FILTER_BOTS:
 		print(S.BRIGHT + F.MAGENTA + "[BOT]\t\t{}: {}".format(author.name, message.content))
 	await bot.process_commands(message)
