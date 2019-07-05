@@ -153,16 +153,18 @@ async def on_message(message):
 	global FILTER_USERS
 
 	rnd = random.randint(0, 5000)
+	guild = message.guild
+	author = message.author
+	channel = message.channel
 	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
 		RANDOM_EVENT_CURRENTLY = True
 		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
 		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
 		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
-	author = message.author
 	if not author.bot and not FILTER_USERS:
-		print(S.BRIGHT + F.CYAN + "[USER]\t\t({}) {}: {}".format(author.id, author.name, message.content))
+		print(S.BRIGHT + F.CYAN + "[@{}\tUSER]\t(#{})\t({}) {}: {}".format(guild.name, channel.name, author.id, author.name, message.content))
 	if author.bot and not FILTER_BOTS:
-		print(S.BRIGHT + F.MAGENTA + "[BOT]\t\t{}: {}".format(author.name, message.content))
+		print(S.BRIGHT + F.MAGENTA + "[@{}\tBOT]\t(#{})\t{}: {}".format(guild.name, channel.name, author.name, message.content))
 	await bot.process_commands(message)
 
 
