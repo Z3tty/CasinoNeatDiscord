@@ -137,11 +137,16 @@ async def on_command_error(ctx, error):
 @bot.event
 async def on_ready():
 	now = datetime.now()
-	game = discord.Game("with probabilities | ?help")
-	await bot.change_presence(status=discord.Status.online, activity=game)
+	server_count: int = len(bot.guilds)
+	await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="{} servers | ?help".format(server_count)))
 	date_time = now.strftime("%d/%m/%Y, %H:%M:%S")
-	print(S.BRIGHT + B.WHITE + F.BLUE + "Bot connected \t\t\t\t\t\t\t\t\t{} [V:ALPHA]".format(date_time))
-	print("--------------------------------------------------------------------------------------------------------------" + S.RESET_ALL)
+	if not hasattr(bot, 'appinfo'):
+		bot.appinfo = await bot.application_info()
+	print(S.BRIGHT + B.WHITE + F.BLUE + "--------------------------------------------------------------------------------")
+	print("Bot connected\t\t{} [V:BETA]\t\t\t\t".format(date_time))
+	print("ID:\t\t\t{}\t\t\t\t\t\nName:\t\t\t{}\t\t\t\t\t\nOwner:\t\t\t{}\t\t\t\t\t\t\nAuthor:\t\t\tZet#1024 (github.com/ZexZee)\t\t\t\t".format(
+																											bot.appinfo.id, bot.appinfo.name, bot.appinfo.owner))
+	print("--------------------------------------------------------------------------------" + S.RESET_ALL)
 
 
 @bot.event
