@@ -443,7 +443,7 @@ async def bal(ctx):
 				line = db.readline()
 				if str(author.id) in line:
 					split: list = line.split("/") # if we find them, respond with their balance and cease
-					bal: str = split[1]
+					bal: str = split[1].rstrip()
 					debug_console_log("bal", author, "Has: ¤{}".format(bal))
 					await ctx.send("```{} has ¤{}```".format(author.name, bal))
 					return
