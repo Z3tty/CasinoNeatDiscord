@@ -239,6 +239,9 @@ async def on_message(message):
 	content = content.replace("~", "")
 	# We dont want to give bots xp
 	if not author.bot:
+		msg = register(author)
+		if msg != None:
+			await message.channel.send("```User {} has been registered!```".format(author.name))
 		xp = random.randint(10, 25)
 		debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
 		xp_return: int = update_level_db(author, xp) # -1 if not registered
