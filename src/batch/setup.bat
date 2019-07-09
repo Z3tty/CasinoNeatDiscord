@@ -8,7 +8,7 @@ mkdir DB
 echo Done!
 echo Creating token file ...
 cd enc
-@echo %token% > token.cncrypt
+@echo %token%> token.cncrypt
 cd ..
 echo Done!
 echo Setting up DB ...
