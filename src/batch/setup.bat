@@ -15,5 +15,6 @@ echo Setting up DB ...
 cd DB
 type NUL > database.cndb
 type NUL > tmp.cncrypt
+type NUL > leveldatabase.cndb
 cd ..
 echo Done!
