@@ -39,6 +39,7 @@ bot = commands.Bot(command_prefix='?', case_insensitive=True)
 RIGGED 					= False
 DB 						= "DB/database.cndb"
 DBTMP 					= "DB/tmp.cncrypt"
+DB_LEVEL 				= "DB/leveldatabase.cndb"
 RANDOM_EVENT_CURRENTLY 	= False
 RANDOM_EVENT_AMOUNT 	= 0
 FILTER_USERS 			= False
@@ -63,7 +64,7 @@ def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
 # Helper function. Registers a user to the bot DB
 def register(user: discord.User):
 	global DB
-
+	global DB_LEVEL
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
 		while line != "":
@@ -75,6 +76,17 @@ def register(user: discord.User):
 			except StopIteration:			# register them if they're not in the DB
 				debug_console_log("register", user, "Error: Hit EOF before end of loop")
 		db.write(str(user.id) + "/1000\n")
+	line = "0000000000000"
+	with open(DB_LEVEL, "r+") as ldb: # ah shit, here we go again
+		while line != "":
+			try:
+				line = ldb.readline()		# check users
+				if str(user.id) in line:
+					split: list = line.split("/")
+					return None
+			except StopIteration:			# register them if they're not in the DB
+				debug_console_log("register", user, "Error: Hit EOF before end of loop")
+		ldb.write(str(user.id) + "/0\n")
 	return ("```User {} has been registered!```".format(user.name))
 
 
@@ -125,6 +137,50 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 			except StopIteration:
 				return False
 
+# Helper function. Does all of the interfacing between the bot and the DB
+# Returns -1 if not registered, then registers.
+def update_level_db(user, amount: int) -> int:
+	global DB_LEVEL
+	global DBTMP
+	xp_after_update: int = 0
+	userid = user.id
+	line = "0000000000"
+	# HERE WE GOOO
+	with open(DB_LEVEL, "r+") as db:
+		while line != "":
+			try: # Use exceptions to find the EOF
+				line = db.readline()
+				if str(userid) in line: # If we found the user
+					split: list = line.split("/") # Get the balance and id seperately
+					xp: str = split[1]
+					xp_after_update = int(xp) + amount
+					newline = str(userid) + "/" + str(xp_after_update) # make the new db entry
+					tmpdata = "0000000"
+					with open(DBTMP, "w") as clear: # clear the tmp file, just in case
+						clear.write("")
+					with open(DBTMP, "r+") as tmp:  # transfer all db info to temporary storage
+						with open(DB_LEVEL, "r+") as db:
+							while tmpdata != "":
+								dbline = db.readline()
+								tmpdata = dbline
+								if dbline == line:			# write the new line instead of the old one
+									tmp.write(newline+"\n")
+								else:
+									tmp.write(dbline+"\n")
+					tmpdata = "0000000"
+					with open(DB_LEVEL, "w") as clear:		# clear the db
+						clear.write("")
+					with open(DB_LEVEL, "r+") as db:			# rewrite the db for future use
+						with open(DBTMP, "r+") as tmp:
+							while tmpdata != "":
+								tmpdata = tmp.readline()
+								if(tmpdata != "\n"): db.write(tmpdata)
+					with open(DBTMP, "w") as clear:	# clear tmp to have it ready for the next pass
+						clear.write("")
+					return xp_after_update
+			except StopIteration:
+				register(user)
+				return -1
 
 # Bot events
 @bot.event
@@ -164,6 +220,12 @@ async def on_message(message):
 	content = message.content
 	content = content.replace("*", "")
 	content = content.replace("`", "")
+	if not author.bot:
+		xp = random.randint(10, 25)
+		debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
+		xp_return: int = update_level_db(author, xp)
+		if xp_return == -1:
+			await message.channel.send("```User {} has been registered!```".format(author.name))
 	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
 		RANDOM_EVENT_CURRENTLY = True
 		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
@@ -199,6 +261,7 @@ async def help(ctx):
 	msg.add_field(		name="?insult <name>", 			value="Generate an insult aimed at someone", 														inline=False)
 	msg.add_field(		name="?compliment <name>", 		value="Generate a compliment aimed at someone", 													inline=False)
 	msg.add_field(		name="?grab", 					value="Used to grab a randomly spawned event amount", 												inline=False)
+	msg.add_field(		name="?level <user:optional>", 	value="Show someone's level and xp count", 															inline=False)
 	msg.add_field(		name="?adminhelp", 				value="Show admin-only commands", 																	inline=False)
 	await ctx.send(		embed=msg)
 
@@ -271,11 +334,8 @@ async def grab(ctx):
 	global RANDOM_EVENT_AMOUNT
 	global RANDOM_EVENT_CURRENTLY
 
-	author = ctx.author
-	msg = register(author)
+	author = ctx.message.author
 	debug_console_log("grab", author)
-	if msg != None:
-		await ctx.send(msg)
 	if RANDOM_EVENT_CURRENTLY:
 		update_success: bool = update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
 		if update_success:
@@ -286,6 +346,25 @@ async def grab(ctx):
 			await ctx.send("```Error updating DB```")
 	else:
 		await ctx.send("```Theres no random event, currently```")
+
+@bot.command()
+async def level(ctx, user: discord.User = None):
+	target = user
+	author = ctx.message.author
+	if target == None:
+		target = author
+	else:
+		msg = register(target)
+		if msg != None:
+			await ctx.send(msg)
+	debug_console_log("level", author, "targets other: {} | target: {}".format((target != None), target))
+	target_xp = update_level_db(target, 0)
+	tmp = target_xp
+	level = 0
+	while tmp > 0:
+		level += 1
+		tmp -= (5000 + (250 * level)) # To make later levels a bit more challenging
+	await ctx.send("```User {} is level {} with {}xp```".format(target.name, level, target_xp))
 
 
 # Roll a dice with a variable amount of sides
@@ -300,9 +379,6 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 	global RIGGED
 
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	debug_console_log("roll", author)
 	if dice == 1:
 		if sides <= 1:
@@ -344,9 +420,6 @@ async def rigg(ctx):
 	global RIGGED
 
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	debug_console_log("rigg", author, "It'll be our little secret ;)")
 	# Dont want the plebians to do this
@@ -368,9 +441,6 @@ async def rigged(ctx):
 			Nothing
 	"""
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	debug_console_log("rigged", author)
 	await ctx.send("```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```")
 
@@ -387,9 +457,6 @@ async def gamble(ctx, bet: int = 0):
 	global RIGGED
 
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	if bet <= 0:
 		await ctx.send("```You need to actually supply a bet, y'know```")
 		debug_console_log("gamble", author, "Malformed command argument")
@@ -436,9 +503,6 @@ async def bal(ctx):
 	global DB
 
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # getting really tired of file i/o
 		while line != "":
@@ -466,34 +530,38 @@ async def debug(ctx):
 			Administrator permission, to stop users from spamming the console with debug info
 	"""
 	global DB
-
+	global DB_LEVEL
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	debug_console_log("debug", author)
 	# I really dont want people to spam debug info
 	if is_admin:
 		registered_users: int = 0
 		total_balance: int = 0
+		total_xp: int = 0
 		line: str = "0000000000000"
+		lv_line: str = "0000000000000"
 		print(S.BRIGHT + B.WHITE + F.BLUE)
-		with open(DB, "r+") as db: # getting really tired of file i/o
-			while line != "":
-				try:
-					line = db.readline() # calculate totals and print individual info
-					split: list = line.split("/")
-					if len(split) >1:	 # ghost users are a thing
-						bal: str = split[1]
-						registered_users += 1
-						total_balance += int(bal)
-						print("User: {} - Balance: ¤{}".format(split[0].rstrip(), bal.rstrip()))
-				except StopIteration:
-					debug_console_log("debug", author, "Error: Hit EOF before end of loop")
-					break
-		print("Total users: {}\t\tTotal balance: ¤{}".format(registered_users, total_balance))
-		await ctx.send("```Info sent to the console! Current user count: {}, total balance: ¤{}```".format(registered_users, total_balance))
+		with open(DB_LEVEL, "r+") as ldb:
+			with open(DB, "r+") as db: # getting really tired of file i/o
+				while line != "":
+					try:
+						line = db.readline() # calculate totals and print individual info
+						lv_line = ldb.readline()
+						split: list = line.split("/")
+						lv_split: list = lv_line.split("/")
+						if len(split) >1 and len(lv_split) >1:	 # ghost users are a thing
+							bal: str = split[1]
+							xp: str = lv_split[1]
+							registered_users += 1
+							total_balance += int(bal)
+							total_xp += int(xp)
+							print("User: {} - Balance: ¤{} - XP: {}".format(split[0].rstrip(), bal.rstrip(), xp.rstrip()))
+					except StopIteration:
+						debug_console_log("debug", author, "Error: Hit EOF before end of loop")
+						break
+		print("Total users: {}\t\tTotal balance: ¤{}\t\tTotal xp: {}".format(registered_users, total_balance, total_xp))
+		await ctx.send("```Info sent to the console! Current user count: {}, total balance: ¤{}, total xp: {}```".format(registered_users, total_balance, total_xp))
 	else:
 		await ctx.send("```Nice try, pleb```")
 	print(S.RESET_ALL)
@@ -509,9 +577,6 @@ async def update(ctx, user: discord.User, amount: int):
 			Administrator permission, for what i hope is an obvious reason. User must also be registered
 	"""
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	debug_console_log("update", author, "Target: ({}) {}, update amount: ¤{}".format(user.id, user.name, amount))
 	# I really dont want normal people to do this
@@ -539,9 +604,6 @@ async def raffle(ctx, prize: int):
 	global RIGGED
 
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	is_admin: bool = author.top_role.permissions.administrator
 	winner_id = ""
 	debug_console_log("raffle", author)
@@ -582,9 +644,6 @@ async def pay(ctx, user: discord.User, amount: int):
 	"""
 	user_from = ctx.message.author
 	user_to   = user
-	msg = register(user_from)
-	if msg != None:
-		await ctx.send(msg)
 	msg = register(user_to)
 	if msg != None:
 		await ctx.send(msg)
@@ -617,9 +676,6 @@ async def order(ctx, drink: str = "empty"):
 			Enough money to buy the required drink, aswell as the drink to buy.
 	"""
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	debug_console_log("order", author, "Drink: {}".format(drink))
 	# Dict would be preferable but I'm tired and just want to iterate
 	drinks: list = [
@@ -659,9 +715,6 @@ async def insult(ctx, *args):
 			Some(one/thing) to insult
 	"""
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	name: str = ""
 	for arg in args:
 		name += str(arg)
@@ -709,9 +762,6 @@ async def compliment(ctx, *args):
 			Some(one/thing) to compliment
 	"""
 	author = ctx.message.author
-	msg = register(author)
-	if msg != None:
-		await ctx.send(msg)
 	name: str = ""
 	for arg in args:
 		name += str(arg)
