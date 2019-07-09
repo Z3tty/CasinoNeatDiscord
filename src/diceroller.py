@@ -347,6 +347,7 @@ async def grab(ctx):
 	else:
 		await ctx.send("```Theres no random event, currently```")
 
+
 @bot.command()
 async def level(ctx, user: discord.User = None):
 	target = user
@@ -363,7 +364,7 @@ async def level(ctx, user: discord.User = None):
 	level = 0
 	while tmp > 0:
 		level += 1
-		tmp -= (5000 + (250 * level)) # To make later levels a bit more challenging
+		tmp -= (500 + (250 * level)) # To make later levels a bit more challenging
 	await ctx.send("```User {} is level {} with {}xp```".format(target.name, level, target_xp))
 
 
