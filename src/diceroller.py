@@ -15,10 +15,10 @@
 """
 
 import discord
-import random
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
 from discord.voice_client import VoiceClient
+
 from colorama import init
 init()
 from colorama import Fore as F
@@ -26,20 +26,26 @@ from colorama import Style as S
 from colorama import Back as B
 
 from datetime import datetime
+import random
+
+
 # Logging
 import logging
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
 logging.basicConfig(level=logging.CRITICAL)
 
+
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix='?', case_insensitive=True)
+
 
 # I'm really sorry but globals are really the easiest way of handling this
 RIGGED 					= False
 DB 						= "DB/database.cndb"
 DBTMP 					= "DB/tmp.cncrypt"
 DB_LEVEL 				= "DB/leveldatabase.cndb"
+AUTHOR 					= "Zet#1024 (github.com/ZexZee)"
 RANDOM_EVENT_CURRENTLY 	= False
 RANDOM_EVENT_AMOUNT 	= 0
 FILTER_USERS 			= False
@@ -50,6 +56,7 @@ FILTER_LOGS  			= False
 TOKEN = ""
 with open("enc/token.cncrypt", "r+") as tfile:
 	TOKEN = tfile.readline()
+
 
 # Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
 def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
@@ -65,6 +72,7 @@ def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
 def register(user: discord.User):
 	global DB
 	global DB_LEVEL
+
 	line: str = "0000000000000"
 	with open(DB, "r+") as db: # ah shit, here we go again
 		while line != "":
@@ -137,11 +145,13 @@ def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
 			except StopIteration:
 				return False
 
+
 # Helper function. Does all of the interfacing between the bot and the DB
 # Returns -1 if not registered, then registers.
 def update_level_db(user, amount: int) -> int:
 	global DB_LEVEL
 	global DBTMP
+
 	xp_after_update: int = 0
 	userid = user.id
 	line = "0000000000"
@@ -182,6 +192,7 @@ def update_level_db(user, amount: int) -> int:
 				register(user)
 				return -1
 
+
 # Bot events
 @bot.event
 async def on_command_error(ctx, error):
@@ -192,6 +203,8 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_ready():
+	global AUTHOR
+	# Forge a header with bot info
 	now = datetime.now()
 	server_count: int = len(bot.guilds)
 	await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="{} servers | ?help".format(server_count)))
@@ -200,19 +213,21 @@ async def on_ready():
 		bot.appinfo = await bot.application_info()
 	print(S.BRIGHT + B.WHITE + F.BLUE + "--------------------------------------------------------------------------------")
 	print("Bot connected\t\t{} [V:BETA]\t\t\t\t".format(date_time))
-	print("ID:\t\t\t{}\t\t\t\t\t\nName:\t\t\t{}\t\t\t\t\t\nOwner:\t\t\t{}\t\t\t\t\t\t\nAuthor:\t\t\tZet#1024 (github.com/ZexZee)\t\t\t\t".format(
-																											bot.appinfo.id, bot.appinfo.name, bot.appinfo.owner))
+	print("ID:\t\t\t{}\t\t\t\t\t\nName:\t\t\t{}\t\t\t\t\t\nOwner:\t\t\t{}\t\t\t\t\t\t\nAuthor:\t\t\t{}\t\t\t\t".format(
+																											bot.appinfo.id, bot.appinfo.name, bot.appinfo.owner, AUTHOR))
 	print("--------------------------------------------------------------------------------" + S.RESET_ALL)
 
 
 @bot.event
 async def on_message(message):
+	# Necessary globals to do on_message events
 	global RANDOM_EVENT_CURRENTLY
 	global RANDOM_EVENT_AMOUNT
 	global FILTER_LOGS
 	global FILTER_BOTS
 	global FILTER_USERS
-
+	# Necessary variables for logging, events, etc.
+	# Also cleaning of message contents for a better reading experience
 	rnd = random.randint(0, 5000)
 	guild = message.guild
 	author = message.author
@@ -220,21 +235,27 @@ async def on_message(message):
 	content = message.content
 	content = content.replace("*", "")
 	content = content.replace("`", "")
+	content = content.replace("_", "")
+	content = content.replace("~", "")
+	# We dont want to give bots xp
 	if not author.bot:
 		xp = random.randint(10, 25)
 		debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
-		xp_return: int = update_level_db(author, xp)
+		xp_return: int = update_level_db(author, xp) # -1 if not registered
 		if xp_return == -1:
 			await message.channel.send("```User {} has been registered!```".format(author.name))
+	# Random cash events
 	if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
 		RANDOM_EVENT_CURRENTLY = True
 		RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
 		print(S.BRIGHT + F.YELLOW + "[DEBUG|LOG]\tRandom event for ¤{} created".format(RANDOM_EVENT_AMOUNT))
 		await message.channel.send("¤{} just materialized out of nothing, get it with `?grab`!".format(RANDOM_EVENT_AMOUNT))
+	# Logging
 	if not author.bot and not FILTER_USERS:
 		print(S.BRIGHT + F.CYAN + "[@{}\tUSER]\t(#{})\t({}) {}: {}".format(guild.name, channel.name, author.id, author.name, content))
 	if author.bot and not FILTER_BOTS:
 		print(S.BRIGHT + F.MAGENTA + "[@{}\tBOT]\t(#{})\t{}: {}".format(guild.name, channel.name, author.name, content))
+	# Make sure commands work
 	await bot.process_commands(message)
 
 
@@ -331,6 +352,12 @@ async def filter(ctx, f: str):
 
 @bot.command()
 async def grab(ctx):
+	"""
+	grab:
+			if there currently is a random event, get the cash and end it
+	Requires:
+			Nothing
+	"""
 	global RANDOM_EVENT_AMOUNT
 	global RANDOM_EVENT_CURRENTLY
 
@@ -350,6 +377,12 @@ async def grab(ctx):
 
 @bot.command()
 async def level(ctx, user: discord.User = None):
+	"""
+	level:
+			get your own, or somebody elses, level
+	Requires:
+			Nothing
+	"""
 	target = user
 	author = ctx.message.author
 	if target == None:
