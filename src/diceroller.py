@@ -437,11 +437,11 @@ async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
 		roll = random.randint(1, sides)
 		if RIGGED:
 			# If you wanna rigg a throw, make sure it always gets the max
-			await ctx.send('```Rolled a {} - {}d{} {}{}```'.format(sides+mod, dice, sides, ("+" if modiferAdds else "-"), mod))
+			await ctx.send('```Rolled a {} - {}d{} {}{}```'.format(sides+mod, dice, sides, ("+" if modiferAdds else ""), mod))
 			RIGGED = False
 			print("Rig successfull, returning to standard, boring \"FAIR\" mode.")
 		else:
-			await ctx.send("```Rolled a {} - {}d{} {}{}```".format(roll+mod, dice, sides, ("+" if modiferAdds else "-"), mod))
+			await ctx.send("```Rolled a {} - {}d{} {}{}```".format(roll+mod, dice, sides, ("+" if modiferAdds else ""), mod))
 	else:
 		dicerolls: list = []
 		total: int = 0
@@ -460,7 +460,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
 				dicerolls.append(tmp)
 				total += tmp
 		RIGGED = False
-		await ctx.send("```Rolled: {} {} - {}d{} {}{}```".format(total+mod, dicerolls, dice, sides, ("+" if modiferAdds else "-"), mod))
+		await ctx.send("```Rolled: {} {} - {}d{} {}{}```".format(total+mod, dicerolls, dice, sides, ("+" if modiferAdds else ""), mod))
 
 
 # Rigg the next roll
