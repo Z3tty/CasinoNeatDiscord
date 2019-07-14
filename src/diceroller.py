@@ -425,7 +425,7 @@ async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
 			mod = int(modifier.replace("+", "").lstrip().rstrip())
 		elif modifier.startswith("-"):
 			modiferAdds = False
-			mod = int(modifier.replace("-", "").lstrip().rstrip())
+			mod = int(modifier.replace("-", "").lstrip().rstrip()) * -1
 		else:
 			await ctx.send("```Thats not a valid modifier!```")
 			return
