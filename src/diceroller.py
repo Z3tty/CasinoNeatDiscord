@@ -275,7 +275,7 @@ async def help(ctx):
 	debug_console_log("help", ctx.message.author)
 	msg = discord.Embed(title="CN Diceroller", 			description="", 																					color=0xff00ff)
 	msg.add_field(		name="?help", 					value="Displays this message.\nAlias=[h, info, commands, c]", 										inline=False)
-	msg.add_field(		name="?roll <dice> <sides>", 	value="Rolls some variable-sided dice and prints the result.\nAlias=[r]", 							inline=False)
+	msg.add_field(		name="?roll <dice><sides>[mod]",value="Rolls some variable-sided dice and prints the result.\nAlias=[r]", 							inline=False)
 	msg.add_field(		name="?rigg", 					value="Nice try", 																					inline=False)
 	msg.add_field(		name="?rigged", 				value="How dare you!", 																				inline=False)
 	msg.add_field(		name="?gamble <bet>", 			value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win.\nAlias=[55x2, g, bet]", inline=False)
@@ -406,7 +406,7 @@ async def level(ctx, user: discord.User = None):
 
 # Roll a dice with a variable amount of sides
 @bot.command(aliases=['r'])
-async def roll(ctx, dice: int = 1, sides: int = 6):
+async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
 	"""
 	Roll: 	
 			performs a riggable roll, printing the result in the chat used, utilizing the sides and dicecount provided.
@@ -417,6 +417,18 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 
 	author = ctx.message.author
 	debug_console_log("roll", author)
+	mod: int = 0
+	modiferAdds: bool = True
+	if modifier != "":
+		if modifier.startswith("+"):
+			modiferAdds = True
+			mod = int(modifier.replace("+", "").lstrip().rstrip())
+		elif modifier.startswith("-"):
+			modiferAdds = False
+			mod = int(modifier.replace("-", "").lstrip().rstrip())
+		else:
+			await ctx.send("```Thats not a valid modifier!```")
+			return
 	if dice == 1:
 		if sides <= 1:
 			# Someone will definitely attempt to roll a "0 sided die" and thats dumb
@@ -425,24 +437,30 @@ async def roll(ctx, dice: int = 1, sides: int = 6):
 		roll = random.randint(1, sides)
 		if RIGGED:
 			# If you wanna rigg a throw, make sure it always gets the max
-			await ctx.send('```Rolled a {} - {}d{}```'.format(sides, dice, sides))
+			await ctx.send('```Rolled a {} - {}d{} {}{}```'.format(sides+mod, dice, sides, ("+" if modiferAdds else "-"), mod))
 			RIGGED = False
 			print("Rig successfull, returning to standard, boring \"FAIR\" mode.")
 		else:
-			await ctx.send("```Rolled a {} - {}d{}```".format(roll, dice, sides))
+			await ctx.send("```Rolled a {} - {}d{} {}{}```".format(roll+mod, dice, sides, ("+" if modiferAdds else "-"), mod))
 	else:
 		dicerolls: list = []
+		total: int = 0
 		i = 0
 		for i in range(dice):
 			if RIGGED:
 				if sides > 2:
-					dicerolls.append(random.randint(sides - 1, sides))
+					tmp = random.randint(sides - 1, sides)
+					dicerolls.append(tmp)
+					total += tmp
 				else:
 					dicerolls.append(sides)
+					total += tmp
 			else:
-				dicerolls.append(random.randint(1, sides))
+				tmp = random.randint(1, sides)
+				dicerolls.append(tmp)
+				total += tmp
 		RIGGED = False
-		await ctx.send("```Rolled: {} - {}d{}```".format(dicerolls, dice, sides))
+		await ctx.send("```Rolled: {} {} - {}d{} {}{}```".format(total+mod, dicerolls, dice, sides, ("+" if modiferAdds else "-"), mod))
 
 
 # Rigg the next roll
