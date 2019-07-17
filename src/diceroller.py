@@ -58,6 +58,7 @@ FILTER_LOGS = False
 TOKEN = ""
 with open("enc/token.cncrypt", "r+") as tfile:
     TOKEN = tfile.readline()
+TOKEN = TOKEN.rstrip().lstrip()
 
 
 # Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
