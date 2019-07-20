@@ -50,9 +50,13 @@ DB_LEVEL = "DB/leveldatabase.cndb"
 AUTHOR = "Zet#1024 (github.com/ZexZee)"
 RANDOM_EVENT_CURRENTLY = False
 RANDOM_EVENT_AMOUNT = 0
+CRATE_SPAWNED = False
+CRATE_GIVES_XP = False
+CRATE_REWARD_AMOUNT = 0
 FILTER_USERS = False
 FILTER_BOTS = False
 FILTER_LOGS = False
+
 
 # OC dont steal
 TOKEN = ""
@@ -75,6 +79,12 @@ def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
                 source, author.id, author.name, msg, RIGGED, is_admin
             )
         )
+
+
+def compose_embed(color, name: str, content: str) -> discord.Embed:
+    msg = discord.Embed(title="CN Diceroller", description="", color=color)
+    msg.add_field(name=name, value=content, inline=False)
+    return msg
 
 
 # Helper function. Registers a user to the bot DB
@@ -267,6 +277,9 @@ async def on_message(message):
     global FILTER_LOGS
     global FILTER_BOTS
     global FILTER_USERS
+    global CRATE_SPAWNED
+    global CRATE_GIVES_XP
+    global CRATE_REWARD_AMOUNT
     # Necessary variables for logging, events, etc.
     # Also cleaning of message contents for a better reading experience
     rnd = random.randint(0, 5000)
@@ -293,7 +306,7 @@ async def on_message(message):
                 "```User {} has been registered!```".format(author.name)
             )
     # Random cash events
-    if rnd < 100 and not RANDOM_EVENT_CURRENTLY:
+    if rnd < 100 and rnd > 10 and not RANDOM_EVENT_CURRENTLY:
         RANDOM_EVENT_CURRENTLY = True
         RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
         print(
@@ -306,12 +319,44 @@ async def on_message(message):
                 RANDOM_EVENT_AMOUNT
             )
         )
+    # Random crate event
+    elif rnd < 10 and not RANDOM_EVENT_CURRENTLY:
+        RANDOM_EVENT_CURRENTLY = True
+        coinflip: int = random.randint(0, 100)
+        if coinflip < 50:
+            CRATE_GIVES_XP = True
+        crate_rarity_roll: int = random.randint(0, 100)
+        crate_rarity: str = ""
+        if crate_rarity_roll < 75:
+            crate_rarity = "Common"
+        if crate_rarity_roll < 50:
+            crate_rarity = "Uncommon"
+        if crate_rarity_roll < 25:
+            crate_rarity = "Rare"
+        if crate_rarity_roll < 10:
+            crate_rarity = "Epic"
+        CRATE_REWARD_AMOUNT = (100 - crate_rarity_roll) * 10
+        if not CRATE_GIVES_XP:
+            CRATE_REWARD_AMOUNT *= 100
+        CRATE_SPAWNED = True
+        print(
+            S.BRIGHT
+            + F.YELLOW
+            + "[DEBUG|LOG]\tRandom crate for ¤{} created (Gives XP instead of Money: {})".format(
+                CRATE_REWARD_AMOUNT, CRATE_GIVES_XP
+            )
+        )
+        await message.channel.send(
+            "***A(n) {} crate was just created! Unbox it with*** `?unbox`***!***".format(
+                crate_rarity
+            )
+        )
     # Logging
     if not author.bot and not FILTER_USERS:
         print(
             S.BRIGHT
             + F.CYAN
-            + "[@{}\tUSER]\t(#{})\t({}) {}: {}".format(
+            + "[@{}/USER]\t(#{})\t({}) {}: {}".format(
                 guild.name, channel.name, author.id, author.name, content
             )
         )
@@ -319,7 +364,7 @@ async def on_message(message):
         print(
             S.BRIGHT
             + F.MAGENTA
-            + "[@{}\tBOT]\t(#{})\t{}: {}".format(
+            + "[@{}/BOT]\t(#{})\t{}: {}".format(
                 guild.name, channel.name, author.name, content
             )
         )
@@ -378,9 +423,6 @@ async def help(ctx):
         name="?compliment <name>",
         value="Generate a compliment aimed at someone",
         inline=False,
-    )
-    msg.add_field(
-        name="?grab", value="Used to grab a randomly spawned event amount", inline=False
     )
     msg.add_field(
         name="?level <user:optional>",
@@ -491,16 +533,66 @@ async def grab(ctx):
         update_success: bool = update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
         if update_success:
             RANDOM_EVENT_CURRENTLY = False
-            await ctx.send(
-                "```Congrats to {}, for grabbing that free ¤{}```".format(
-                    author.name, RANDOM_EVENT_AMOUNT
-                )
+            e = compose_embed(
+                0x00FF00,
+                "Congratulations, {}!",
+                "You have gained ¤{}".format(author.name, RANDOM_EVENT_AMOUNT),
             )
-            RANDOM_EVENT_AMOUNT = 0
+            await ctx.send(embed=e)
         else:
-            await ctx.send("```Error updating DB```")
+            e = compose_embed(
+                0xFF0000, "Error", "Error updating database, contact an administrator"
+            )
+            await ctx.send(embed=e)
     else:
-        await ctx.send("```Theres no random event, currently```")
+        e = compose_embed(0xFFFF00, "No event", "There is currently no event ongoing")
+        await ctx.send(embed=e)
+
+
+@bot.command()
+async def unbox(ctx):
+    """
+	grab:
+			if there currently is a random event, get the cash and end it
+	Requires:
+			Nothing
+	"""
+    global CRATE_REWARD_AMOUNT
+    global CRATE_GIVES_XP
+    global RANDOM_EVENT_CURRENTLY
+
+    author = ctx.message.author
+    debug_console_log("unbox", author)
+    if RANDOM_EVENT_CURRENTLY:
+        update_success = 0
+        if not CRATE_GIVES_XP:
+            update_success = update_db(author.id, CRATE_REWARD_AMOUNT, False, False)
+        else:
+            update_success = update_level_db(author, CRATE_REWARD_AMOUNT)
+            if update_success != -1:
+                update_success = True
+        if update_success:
+            RANDOM_EVENT_CURRENTLY = False
+            e = compose_embed(
+                0xFF0000,
+                "Congratulations, {}!",
+                "You have unboxed {}{}{}".format(
+                    author.name,
+                    ("¤" if not CRATE_GIVES_XP else ""),
+                    CRATE_REWARD_AMOUNT,
+                    ("xp" if CRATE_GIVES_XP else ""),
+                ),
+            )
+            await ctx.send(embed=e)
+            CRATE_GIVES_XP = False
+        else:
+            e = compose_embed(
+                0xFF0000, "Error", "Error updating database, contact an administrator"
+            )
+            await ctx.send(embed=e)
+    else:
+        e = compose_embed(0xFFFF00, "No event", "There is currently no event ongoing")
+        await ctx.send(embed=e)
 
 
 @bot.command()
@@ -530,9 +622,12 @@ async def level(ctx, user: discord.User = None):
     while tmp > 0:
         level += 1
         tmp -= 500 + (250 * level)  # To make later levels a bit more challenging
-    await ctx.send(
-        "```User {} is level {} with {}xp```".format(target.name, level, target_xp)
+    e = compose_embed(
+        0xFFFFFF,
+        "{}, Level {}".format(target.name, level),
+        "{} has {}xp".format(target.name, target_xp),
     )
+    await ctx.send(embed=e)
 
 
 # Roll a dice with a variable amount of sides
@@ -558,29 +653,37 @@ async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
             modiferAdds = False
             mod = int(modifier.replace("-", "").lstrip().rstrip()) * -1
         else:
-            await ctx.send("```Thats not a valid modifier!```")
+            e = compose_embed(
+                0xFF0000,
+                "Invalid modifier!",
+                "{} is not a valid modifier".format(modifier),
+            )
+            await ctx.send(embed=e)
             return
     if dice == 1:
         if sides <= 1:
             # Someone will definitely attempt to roll a "0 sided die" and thats dumb
-            await ctx.send("```Are you braindead? Do you not know how dice work?```")
+            e = compose_embed(0xFF0000, "Thats not how dice work", "")
+            await ctx.send(embed=e)
             return
         roll = random.randint(1, sides)
         if RIGGED:
             # If you wanna rigg a throw, make sure it always gets the max
-            await ctx.send(
-                "```Rolled a {} - {}d{} {}{}```".format(
-                    sides + mod, dice, sides, ("+" if modiferAdds else ""), mod
-                )
+            e = compose_embed(
+                0x00FF00,
+                "You rolled a {}".format(sides + mod),
+                "{}d{} {}{}".format(dice, sides, ("+" if modiferAdds else ""), mod),
             )
+            await ctx.send(embed=e)
             RIGGED = False
             print('Rig successfull, returning to standard, boring "FAIR" mode.')
         else:
-            await ctx.send(
-                "```Rolled a {} - {}d{} {}{}```".format(
-                    roll + mod, dice, sides, ("+" if modiferAdds else ""), mod
-                )
+            e = compose_embed(
+                0x00FF00,
+                "You rolled a {}".format(roll + mod),
+                "{}d{} {}{}".format(dice, sides, ("+" if modiferAdds else ""), mod),
             )
+            await ctx.send(embed=e)
     else:
         dicerolls: list = []
         total: int = 0
@@ -599,11 +702,14 @@ async def roll(ctx, dice: int = 1, sides: int = 6, modifier: str = ""):
                 dicerolls.append(tmp)
                 total += tmp
         RIGGED = False
-        await ctx.send(
-            "```Rolled: {} {} - {}d{} {}{}```".format(
-                total + mod, dicerolls, dice, sides, ("+" if modiferAdds else ""), mod
-            )
+        e = compose_embed(
+            0x00FF00,
+            "You rolled a {}".format(total + mod),
+            "{} {}d{} {}{}".format(
+                dicerolls, dice, sides, ("+" if modiferAdds else ""), mod
+            ),
         )
+        await ctx.send(embed=e)
 
 
 # Rigg the next roll
@@ -626,9 +732,12 @@ async def rigg(ctx):
         # Hide the evidence
         await ctx.message.delete()
     else:
-        await ctx.send(
-            "```I'm deeply offended that you'd assume I have such functionality```"
+        e = compose_embed(
+            0xFFFFFF,
+            "How dare you!",
+            "I do NOT have that kind of functionality, how dare thee!",
         )
+    await ctx.send(embed=e)
 
 
 # If someone were to be so incredulous as to accuse the bot
@@ -642,9 +751,12 @@ async def rigged(ctx):
 	"""
     author = ctx.message.author
     debug_console_log("rigged", author)
-    await ctx.send(
-        "```How DARE you accuse me of rigging something as holy as a dice throw you degenerate manatee!```"
+    e = compose_embed(
+        0xFFFFFF,
+        "How dare you!",
+        "I do NOT have that kind of functionality, how dare thee!",
     )
+    await ctx.send(embed=e)
 
 
 # Dice game, most of the code is DB stuff
@@ -660,7 +772,12 @@ async def gamble(ctx, bet: int = 0):
 
     author = ctx.message.author
     if bet <= 0:
-        await ctx.send("```You need to actually supply a bet, y'know```")
+        e = compose_embed(
+            0xFF0000,
+            "You must supply a bet",
+            "Even if these tokens dont really exist, I cant accept an empty bet!",
+        )
+        await ctx.send(embed=e)
         debug_console_log("gamble", author, "Malformed command argument")
         return
     # get the current userid (db stuff)
@@ -678,22 +795,38 @@ async def gamble(ctx, bet: int = 0):
     if roll <= 55:
         update_success = update_db(author.id, int(bet), True)
         if update_success:
-            await ctx.send(
-                "```I'm sorry, you just lost ¤{} with a roll of {}```".format(bet, roll)
+            e = compose_embed(
+                0x0000FF,
+                "I'm sorry, you just lost ¤{}!".format(bet),
+                "Needed: >55. Got: {}".format(roll),
             )
+            await ctx.send(embed=e)
             return
         else:
-            await ctx.send("```You do not have enough money to place that bet```")
+            e = compose_embed(
+                0xFF0000,
+                "Insufficient account balance",
+                "You cant bet money you dont have!",
+            )
+            await ctx.send(embed=e)
             return
     else:
         update_success = update_db(author.id, int(bet), False)
         if update_success:
-            await ctx.send(
-                "```Congrats, you just won ¤{} with a roll of {}```".format(bet, roll)
+            e = compose_embed(
+                0x00FF00,
+                "Congratulations! You just won ¤{}".format(bet),
+                "Needed: >55. Got: {}".format(roll),
             )
+            await ctx.send(embed=e)
             return
         else:
-            await ctx.send("```You do not have enough money to place that bet```")
+            e = compose_embed(
+                0xFF0000,
+                "Insufficient account balance",
+                "You cant bet money you dont have!",
+            )
+            await ctx.send(embed=e)
             return
 
 
@@ -720,11 +853,19 @@ async def bal(ctx):
                     )  # if we find them, respond with their balance and cease
                     bal: str = split[1].rstrip()
                     debug_console_log("bal", author, "Has: ¤{}".format(bal))
-                    await ctx.send("```{} has ¤{}```".format(author.name, bal))
+                    e = compose_embed(
+                        0x00FF00,
+                        "{} has ¤{}".format(author.name, bal),
+                        "ID: {}".format(author.id),
+                    )
+                    await ctx.send(embed=e)
                     return
             except StopIteration:
                 debug_console_log("bal", author, "Error: User not found")
-                await ctx.send("```Error retrieving balance```")
+                e = compose_embed(
+                    0xFF0000, "Error retrieving balance", "Contact an administrator"
+                )
+                await ctx.send(embed=e)
 
 
 # Get some debug info in the console
@@ -783,14 +924,22 @@ async def debug(ctx):
                 registered_users, total_balance, total_xp
             )
         )
-        await ctx.send(
-            "```Info sent to the console! Current user count: {}, total balance: ¤{}, total xp: {}```".format(
+        print(S.RESET_ALL)
+        e = compose_embed(
+            0xFF00FF,
+            "Registered users: {} - Total balance: {} - Total XP: {}".format(
                 registered_users, total_balance, total_xp
-            )
+            ),
+            "Detailed info sent to the console!",
         )
+        await ctx.send(embed=e)
     else:
-        await ctx.send("```Nice try, pleb```")
-    print(S.RESET_ALL)
+        e = compose_embed(
+            0xFF0000,
+            "Permission error",
+            "This command requires Administrator priviliges",
+        )
+        await ctx.send(embed=e)
 
 
 # Change someones balance
@@ -813,13 +962,28 @@ async def update(ctx, user: discord.User, amount: int):
     if is_admin:
         update_success: bool = update_db(user.id, amount, False, False)
         if update_success:
-            await ctx.send("```Added ¤{} to {}'s balance```".format(amount, user.name))
+            e = compose_embed(
+                0xFF00FF,
+                "Added ¤{} to {}'s balance!".format(amount, user.name),
+                "ID: {}".format(user.id),
+            )
+            await ctx.send(embed=e)
             return
         else:
-            await ctx.send("```I cant update a nonexistant balance! (?register)```")
+            e = compose_embed(
+                0xFF0000,
+                "Cannot update a user who isnt registered!",
+                "ID: {}".format(user.id),
+            )
+            await ctx.send(embed=e)
             return
     else:
-        await ctx.send("```Thats a no from me dawg```")
+        e = compose_embed(
+            0xFF0000,
+            "Permission error",
+            "This command requires Administrator priviliges",
+        )
+        await ctx.send(embed=e)
 
 
 @bot.command()
@@ -860,15 +1024,26 @@ async def raffle(ctx, prize: int):
             winner_id = user_ids[roll]
         update_success: bool = update_db(winner_id, prize, False, False)
         if update_success:
-            await ctx.send(
-                "**Congratulations, <@{}>! You just won ¤{} in the raffle hosted by {}**".format(
-                    winner_id, prize, author.name
-                )
+            e = compose_embed(
+                0x00FF00,
+                "Congratulations, <@{}>!".format(winner_id),
+                "You won ¤{} from the raffle hosted by {}!".format(prize, author.name),
             )
+            await ctx.send(embed=e)
             return
         else:
-            await ctx.send("```Error finding winner of raffle!```")
+            e = compose_embed(
+                0xFF0000, "Error picking winner!", "Contact an administrator"
+            )
+            await ctx.send(embed=e)
             return
+    else:
+        e = compose_embed(
+            0xFF0000,
+            "Permission error",
+            "This command requires Administrator priviliges",
+        )
+        await ctx.send(embed=e)
 
 
 @bot.command(aliases=["give"])
@@ -893,24 +1068,34 @@ async def pay(ctx, user: discord.User, amount: int):
     if update_success_deduct:
         update_success_increase: bool = update_db(user_to.id, amount, False, False)
         if update_success_increase:
-            await ctx.send(
-                "```{} successfully sent ¤{} to {}!```".format(
-                    user_from.name, amount, user_to.name
-                )
+            e = compose_embed(
+                0x00FF00,
+                "Sucessfully sent ¤{} to {}!".format(amount, user_to.name),
+                "FROM: {} - TO: {}".format(user_from.id, user_to.id),
             )
+            await ctx.send(embed=e)
             return
         else:
             update_success_reset: bool = update_db(user_from.id, amount, False, False)
             if update_success_reset:
-                await ctx.send("```Error during transfer, you have not been charged```")
+                e = compose_embed(
+                    0xFF0000, "Error during transfer", "You have not been charged"
+                )
+                await ctx.send(embed=e)
                 return
             else:
-                await ctx.send(
-                    "```Error during transfer, you HAVE been charged, please contact an admin```"
+                e = compose_embed(
+                    0xFF0000,
+                    "Error during transfer",
+                    "You have been charged, contact an administrator!",
                 )
+                await ctx.send(embed=e)
                 return
     else:
-        await ctx.send("```Error withdrawing funds. Do you have enough?```")
+        e = compose_embed(
+            0xFF0000, "Error during transfer", "You cant give more than you have!"
+        )
+        await ctx.send(embed=e)
         return
 
 
@@ -928,28 +1113,36 @@ async def order(ctx, drink: str = "empty"):
     drinks: list = ["beer", "cider", "wine", "rum", "vodka", "whiskey"]
     prices: list = [5, 5, 10, 12, 12, 15]
     if drink == "empty":
-        await ctx.send("What can I getcha?")
-        await ctx.send("I currently have ...")
+        e = discord.Embed(title="CN Diceroller", description="", color=0x662200)
+        e.add_field(
+            name="What can I getcha?", value="I currently have ...", inline=False
+        )
         i = 0
         while i < (len(drinks)):
-            await ctx.send("{} for ¤{}".format(drinks[i], prices[i]))
+            e.add_field(name=str(drinks[i]), value=str(prices[i]), inline=False)
             i += 1
+        await ctx.send(embed=e)
     else:
         if drink.lower() in drinks:
             price = prices[drinks.index(drink.lower())]
             update_success: bool = update_db(author.id, price, True)
             if update_success:
-                await ctx.send(
-                    "```You buy a glass of {} for ¤{}, and down it in a single gulp. You feel scammed.```".format(
-                        drink, price
-                    )
+                e = compose_embed(
+                    0xFFFFFF,
+                    "You buy a class of {}".format(drink.lower()),
+                    "You feel scammed",
                 )
+                await ctx.send(embed=e)
             else:
-                await ctx.send(
-                    "```You either cant afford that drink, or you dont even have an account```"
+                e = compose_embed(
+                    0xFF0000, "You cant afford that.", "I dont take imaginary currency"
                 )
+                await ctx.send(embed=e)
         else:
-            await ctx.send("```I'm sorry, but I dont know how to make that drink```")
+            e = compose_embed(
+                0xFF0000, "You cant afford that.", "I dont take imaginary currency"
+            )
+            await ctx.send(embed=e)
 
 
 @bot.command()
@@ -996,7 +1189,8 @@ async def insult(ctx, *args):
     pidx: int = random.randint(0, plen)
     fidx: int = random.randint(0, flen)
     msg: str = (preambles[pidx] + name + finishers[fidx])
-    await ctx.send("```{}```".format(msg))
+    e = compose_embed(0xFF00FF, msg, "ID: {}".format(author.id))
+    await ctx.send(embed=e)
 
 
 @bot.command()
@@ -1040,7 +1234,8 @@ async def compliment(ctx, *args):
     pidx: int = random.randint(0, plen)
     fidx: int = random.randint(0, flen)
     msg: str = (preambles[pidx] + name + finishers[fidx])
-    await ctx.send("```{}```".format(msg))
+    e = compose_embed(0xFF00FF, msg, "ID: {}".format(author.id))
+    await ctx.send(embed=e)
 
 
 bot.run(TOKEN)
