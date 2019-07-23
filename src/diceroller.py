@@ -13,57 +13,27 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-
 import discord
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
 from discord.voice_client import VoiceClient
-
 from colorama import init
-
 init()
 from colorama import Fore as F
 from colorama import Style as S
 from colorama import Back as B
-
 from datetime import datetime
 import random
-
-
 # Logging
 import logging
-
+from cn_globals import *
+import cndb
+DATABASE = cndb.CNDatabase()
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
 logging.basicConfig(level=logging.CRITICAL)
-
-
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix="?", case_insensitive=True)
-
-
-# I'm really sorry but globals are really the easiest way of handling this
-RIGGED = False
-DB = "DB/database.cndb"
-DBTMP = "DB/tmp.cncrypt"
-DB_LEVEL = "DB/leveldatabase.cndb"
-AUTHOR = "Zet#1024 (github.com/ZexZee)"
-RANDOM_EVENT_CURRENTLY = False
-RANDOM_EVENT_AMOUNT = 0
-CRATE_SPAWNED = False
-CRATE_GIVES_XP = False
-CRATE_REWARD_AMOUNT = 0
-FILTER_USERS = False
-FILTER_BOTS = False
-FILTER_LOGS = False
-
-
-# OC dont steal
-TOKEN = ""
-with open("enc/token.cncrypt", "r+") as tfile:
-    TOKEN = tfile.readline()
-TOKEN = TOKEN.rstrip().lstrip()
-
 
 # Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
 def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
@@ -85,147 +55,6 @@ def compose_embed(color, name: str, content: str) -> discord.Embed:
     msg = discord.Embed(title="CN Diceroller", description="", color=color)
     msg.add_field(name=name, value=content, inline=False)
     return msg
-
-
-# Helper function. Registers a user to the bot DB
-def register(user: discord.User):
-    global DB
-    global DB_LEVEL
-
-    line: str = "0000000000000"
-    with open(DB, "r+") as db:  # ah shit, here we go again
-        while line != "":
-            try:
-                line = db.readline()  # check users
-                if str(user.id) in line:
-                    split: list = line.split("/")
-                    return None
-            except StopIteration:  # register them if they're not in the DB
-                debug_console_log("register", user, "Error: Hit EOF before end of loop")
-        db.write(str(user.id) + "/1000\n")
-    line = "0000000000000"
-    with open(DB_LEVEL, "r+") as ldb:  # ah shit, here we go again
-        while line != "":
-            try:
-                line = ldb.readline()  # check users
-                if str(user.id) in line:
-                    split: list = line.split("/")
-                    return None
-            except StopIteration:  # register them if they're not in the DB
-                debug_console_log("register", user, "Error: Hit EOF before end of loop")
-        ldb.write(str(user.id) + "/0\n")
-    return "```User {} has been registered!```".format(user.name)
-
-
-# Helper function. Does all of the interfacing between the bot and the DB
-def update_db(userid, amount: int, sub: bool, isBet: bool = True) -> bool:
-    global DB
-    global DBTMP
-
-    line = "0000000000"
-    # HERE WE GOOO
-    with open(DB, "r+") as db:
-        while line != "":
-            try:  # Use exceptions to find the EOF
-                line = db.readline()
-                if str(userid) in line:  # If we found the user
-                    split: list = line.split("/")  # Get the balance and id seperately
-                    bal: str = split[1]
-                    if int(bal) < amount and isBet:  # cant bet more than you have
-                        return False
-                    if sub:
-                        bal = str(int(bal) - amount)
-                    else:
-                        bal = str(int(bal) + amount)
-                    newline = str(userid) + "/" + str(bal)  # make the new db entry
-                    tmpdata = "0000000"
-                    with open(DBTMP, "w") as clear:  # clear the tmp file, just in case
-                        clear.write("")
-                    with open(
-                        DBTMP, "r+"
-                    ) as tmp:  # transfer all db info to temporary storage
-                        with open(DB, "r+") as db:
-                            while tmpdata != "":
-                                dbline = db.readline()
-                                tmpdata = dbline
-                                if (
-                                    dbline == line
-                                ):  # write the new line instead of the old one
-                                    tmp.write(newline + "\n")
-                                else:
-                                    tmp.write(dbline + "\n")
-                    tmpdata = "0000000"
-                    with open(DB, "w") as clear:  # clear the db
-                        clear.write("")
-                    with open(DB, "r+") as db:  # rewrite the db for future use
-                        with open(DBTMP, "r+") as tmp:
-                            while tmpdata != "":
-                                tmpdata = tmp.readline()
-                                if tmpdata != "\n":
-                                    db.write(tmpdata)
-                    with open(
-                        DBTMP, "w"
-                    ) as clear:  # clear tmp to have it ready for the next pass
-                        clear.write("")
-                    return True
-            except StopIteration:
-                return False
-
-
-# Helper function. Does all of the interfacing between the bot and the DB
-# Returns -1 if not registered, then registers.
-def update_level_db(user, amount: int) -> int:
-    global DB_LEVEL
-    global DBTMP
-
-    xp_after_update: int = 0
-    userid = user.id
-    line = "0000000000"
-    # HERE WE GOOO
-    with open(DB_LEVEL, "r+") as db:
-        while line != "":
-            try:  # Use exceptions to find the EOF
-                line = db.readline()
-                if str(userid) in line:  # If we found the user
-                    split: list = line.split("/")  # Get the balance and id seperately
-                    xp: str = split[1]
-                    xp_after_update = int(xp) + amount
-                    newline = (
-                        str(userid) + "/" + str(xp_after_update)
-                    )  # make the new db entry
-                    tmpdata = "0000000"
-                    with open(DBTMP, "w") as clear:  # clear the tmp file, just in case
-                        clear.write("")
-                    with open(
-                        DBTMP, "r+"
-                    ) as tmp:  # transfer all db info to temporary storage
-                        with open(DB_LEVEL, "r+") as db:
-                            while tmpdata != "":
-                                dbline = db.readline()
-                                tmpdata = dbline
-                                if (
-                                    dbline == line
-                                ):  # write the new line instead of the old one
-                                    tmp.write(newline + "\n")
-                                else:
-                                    tmp.write(dbline + "\n")
-                    tmpdata = "0000000"
-                    with open(DB_LEVEL, "w") as clear:  # clear the db
-                        clear.write("")
-                    with open(DB_LEVEL, "r+") as db:  # rewrite the db for future use
-                        with open(DBTMP, "r+") as tmp:
-                            while tmpdata != "":
-                                tmpdata = tmp.readline()
-                                if tmpdata != "\n":
-                                    db.write(tmpdata)
-                    with open(
-                        DBTMP, "w"
-                    ) as clear:  # clear tmp to have it ready for the next pass
-                        clear.write("")
-                    return xp_after_update
-            except StopIteration:
-                register(user)
-                return -1
 
 
 # Bot events
@@ -280,6 +109,7 @@ async def on_message(message):
     global CRATE_SPAWNED
     global CRATE_GIVES_XP
     global CRATE_REWARD_AMOUNT
+    global DATABASE
     # Necessary variables for logging, events, etc.
     # Also cleaning of message contents for a better reading experience
     rnd = random.randint(0, 5000)
@@ -293,14 +123,14 @@ async def on_message(message):
     content = content.replace("~", "")
     # We dont want to give bots xp
     if not author.bot:
-        msg = register(author)
+        msg = DATABASE.register(author)
         if msg != None:
             await message.channel.send(
                 "```User {} has been registered!```".format(author.name)
             )
         xp = random.randint(10, 25)
         debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
-        xp_return: int = update_level_db(author, xp)  # -1 if not registered
+        xp_return: int = DATABASE.update_level_db(author, xp)  # -1 if not registered
         if xp_return == -1:
             await message.channel.send(
                 "```User {} has been registered!```".format(author.name)
@@ -526,17 +356,18 @@ async def grab(ctx):
 	"""
     global RANDOM_EVENT_AMOUNT
     global RANDOM_EVENT_CURRENTLY
+    global DATABASE
 
     author = ctx.message.author
     debug_console_log("grab", author)
     if RANDOM_EVENT_CURRENTLY:
-        update_success: bool = update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
+        update_success: bool = DATABASE.update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
         if update_success:
             RANDOM_EVENT_CURRENTLY = False
             e = compose_embed(
                 0x00FF00,
-                "Congratulations, {}!",
-                "You have gained ¤{}".format(author.name, RANDOM_EVENT_AMOUNT),
+                "Congratulations, {}!".format(author.name),
+                "You have gained ¤{}".format(RANDOM_EVENT_AMOUNT),
             )
             await ctx.send(embed=e)
         else:
@@ -552,32 +383,32 @@ async def grab(ctx):
 @bot.command()
 async def unbox(ctx):
     """
-	grab:
-			if there currently is a random event, get the cash and end it
+	unbox:
+			if there currently is a random event, unbox a crate and end it
 	Requires:
 			Nothing
 	"""
     global CRATE_REWARD_AMOUNT
     global CRATE_GIVES_XP
     global RANDOM_EVENT_CURRENTLY
+    global DATABASE
 
     author = ctx.message.author
     debug_console_log("unbox", author)
     if RANDOM_EVENT_CURRENTLY:
         update_success = 0
         if not CRATE_GIVES_XP:
-            update_success = update_db(author.id, CRATE_REWARD_AMOUNT, False, False)
+            update_success = DATABASE.update_db(author.id, CRATE_REWARD_AMOUNT, False, False)
         else:
-            update_success = update_level_db(author, CRATE_REWARD_AMOUNT)
+            update_success = DATABASE.update_level_db(author, CRATE_REWARD_AMOUNT)
             if update_success != -1:
                 update_success = True
         if update_success:
             RANDOM_EVENT_CURRENTLY = False
             e = compose_embed(
                 0xFF0000,
-                "Congratulations, {}!",
+                "Congratulations, {}!".format(author.name),
                 "You have unboxed {}{}{}".format(
-                    author.name,
                     ("¤" if not CRATE_GIVES_XP else ""),
                     CRATE_REWARD_AMOUNT,
                     ("xp" if CRATE_GIVES_XP else ""),
@@ -603,12 +434,14 @@ async def level(ctx, user: discord.User = None):
 	Requires:
 			Nothing
 	"""
+    global DATABASE
+
     target = user
     author = ctx.message.author
     if target == None:
         target = author
     else:
-        msg = register(target)
+        msg = DATABASE.register(target)
         if msg != None:
             await ctx.send(msg)
     debug_console_log(
@@ -616,7 +449,7 @@ async def level(ctx, user: discord.User = None):
         author,
         "targets other: {} | target: {}".format((target != None), target),
     )
-    target_xp = update_level_db(target, 0)
+    target_xp = DATABASE.update_level_db(target, 0)
     tmp = target_xp
     level = 0
     while tmp > 0:
@@ -769,6 +602,7 @@ async def gamble(ctx, bet: int = 0):
 			User must be registered and have a sufficient balance to play the game
 	"""
     global RIGGED
+    global DATABASE
 
     author = ctx.message.author
     if bet <= 0:
@@ -793,7 +627,7 @@ async def gamble(ctx, bet: int = 0):
     update_success: bool = False
     debug_console_log("gamble", author, "¤{} | Won: {}".format(bet, roll > 55))
     if roll <= 55:
-        update_success = update_db(author.id, int(bet), True)
+        update_success = DATABASE.update_db(author.id, int(bet), True)
         if update_success:
             e = compose_embed(
                 0x0000FF,
@@ -811,7 +645,7 @@ async def gamble(ctx, bet: int = 0):
             await ctx.send(embed=e)
             return
     else:
-        update_success = update_db(author.id, int(bet), False)
+        update_success = DATABASE.update_db(author.id, int(bet), False)
         if update_success:
             e = compose_embed(
                 0x00FF00,
@@ -951,6 +785,8 @@ async def update(ctx, user: discord.User, amount: int):
 	Requires:
 			Administrator permission, for what i hope is an obvious reason. User must also be registered
 	"""
+    global DATABASE
+
     author = ctx.message.author
     is_admin: bool = author.top_role.permissions.administrator
     debug_console_log(
@@ -960,7 +796,7 @@ async def update(ctx, user: discord.User, amount: int):
     )
     # I really dont want normal people to do this
     if is_admin:
-        update_success: bool = update_db(user.id, amount, False, False)
+        update_success: bool = DATABASE.update_db(user.id, amount, False, False)
         if update_success:
             e = compose_embed(
                 0xFF00FF,
@@ -1022,7 +858,7 @@ async def raffle(ctx, prize: int):
                         )
             roll = random.randint(0, len(user_ids) - 1)
             winner_id = user_ids[roll]
-        update_success: bool = update_db(winner_id, prize, False, False)
+        update_success: bool = DATABASE.update_db(winner_id, prize, False, False)
         if update_success:
             e = compose_embed(
                 0x00FF00,
@@ -1054,6 +890,8 @@ async def pay(ctx, user: discord.User, amount: int):
 	Requires:
 			The user to pay, the amount to pay, and a balance that covers the amount.
 	"""
+    global DATABASE
+
     user_from = ctx.message.author
     user_to = user
     msg = register(user_to)
@@ -1064,9 +902,9 @@ async def pay(ctx, user: discord.User, amount: int):
         user_from,
         "Target: ({}) {}, amount: ¤{}".format(user_to.id, user_to.name, amount),
     )
-    update_success_deduct: bool = update_db(user_from.id, amount, True)
+    update_success_deduct: bool = DATABASE.update_db(user_from.id, amount, True)
     if update_success_deduct:
-        update_success_increase: bool = update_db(user_to.id, amount, False, False)
+        update_success_increase: bool = DATABASE.update_db(user_to.id, amount, False, False)
         if update_success_increase:
             e = compose_embed(
                 0x00FF00,
@@ -1076,7 +914,7 @@ async def pay(ctx, user: discord.User, amount: int):
             await ctx.send(embed=e)
             return
         else:
-            update_success_reset: bool = update_db(user_from.id, amount, False, False)
+            update_success_reset: bool = DATABASE.update_db(user_from.id, amount, False, False)
             if update_success_reset:
                 e = compose_embed(
                     0xFF0000, "Error during transfer", "You have not been charged"
@@ -1107,6 +945,8 @@ async def order(ctx, drink: str = "empty"):
 	Requires:
 			Enough money to buy the required drink, aswell as the drink to buy.
 	"""
+    global DATABASE
+    
     author = ctx.message.author
     debug_console_log("order", author, "Drink: {}".format(drink))
     # Dict would be preferable but I'm tired and just want to iterate
@@ -1125,7 +965,7 @@ async def order(ctx, drink: str = "empty"):
     else:
         if drink.lower() in drinks:
             price = prices[drinks.index(drink.lower())]
-            update_success: bool = update_db(author.id, price, True)
+            update_success: bool = DATABASE.update_db(author.id, price, True)
             if update_success:
                 e = compose_embed(
                     0xFFFFFF,
