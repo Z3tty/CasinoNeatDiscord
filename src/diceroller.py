@@ -302,11 +302,6 @@ async def adminhelp(ctx):
         inline=False,
     )
     msg.add_field(
-        name="?raffle <prizeamount>",
-        value="(ADMIN) Gives a random registered user a prize",
-        inline=False,
-    )
-    msg.add_field(
         name="?filter <value>", value="(ADMIN) Filters console output.", inline=False
     )
     filters = discord.Embed(
@@ -777,66 +772,6 @@ async def update(ctx, user: discord.User, amount: int):
                 0xFF0000,
                 "Cannot update a user who isnt registered!",
                 "ID: {}".format(user.id),
-            )
-            await ctx.send(embed=e)
-            return
-    else:
-        e = compose_embed(
-            0xFF0000,
-            "Permission error",
-            "This command requires Administrator priviliges",
-        )
-        await ctx.send(embed=e)
-
-
-@bot.command()
-async def raffle(ctx, prize: int):
-    """
-	Raffle:
-			give a prize amount to a random registered user.
-	Requires:
-			Administrator permission, to avoid effectively destroying the economy. Users must be registered, prize amount must be given.
-	"""
-    global DB
-    global RIGGED
-
-    author = ctx.message.author
-    is_admin: bool = author.top_role.permissions.administrator
-    winner_id = ""
-    debug_console_log("raffle", author)
-    if is_admin:
-        user_ids: list = []
-        line: str = "000000000"
-        if RIGGED:
-            winner_id = str(author.id)
-            RIGGED = False
-        else:
-            with open(DB, "r+") as db:
-                while line != "":
-                    try:
-                        line = db.readline()
-                        split = line.split("/")
-                        current_id = split[0]
-                        if current_id != "":
-                            user_ids.append(current_id)
-                    except StopIteration:
-                        debug_console_log(
-                            "raffle", author, "Error: Hit EOF before end of loop"
-                        )
-            roll = random.randint(0, len(user_ids) - 1)
-            winner_id = user_ids[roll]
-        update_success: int = DATABASE.update_db(winner_id, prize, False, False)
-        if update_success != -1:
-            e = compose_embed(
-                0x00FF00,
-                "Congratulations, <@{}>!".format(winner_id),
-                "You won ¤{} from the raffle hosted by {}!".format(prize, author.name),
-            )
-            await ctx.send(embed=e)
-            return
-        else:
-            e = compose_embed(
-                0xFF0000, "Error picking winner!", "Contact an administrator"
             )
             await ctx.send(embed=e)
             return
