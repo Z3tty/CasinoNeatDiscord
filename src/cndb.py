@@ -44,10 +44,11 @@ class CNDatabase:
 
     def push(self) -> None:
         global DB
+        global HAS_CHANGED
 
         with open(DB, "w") as clear:
             clear.write("")
-        if self._db_map_index != 0:
+        if self._db_map_index != 0 and HAS_CHANGED:
             self._db_map_index = 0
             line: str = "0000000000000000"
             with open(DB, "a") as db:
@@ -72,6 +73,7 @@ class CNDatabase:
                     print(
                         "CNDB :: Push -> End of file encountered when writing data to disk" 
                     )
+            HAS_CHANGED = False
 
     # Helper function. Registers a user to the bot DB
     def register(self, user: discord.User):
@@ -89,8 +91,11 @@ class CNDatabase:
 
     # Helper function. Does all of the interfacing between the bot and the DB
     def update_db(self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False) -> int:
+        global HAS_CHANGED
+
         for user in self._db_map:
             if user[0] == str(userid):
+                HAS_CHANGED = True
                 if isXP:
                     user[2] = int(user[2]) + amount
                     return int(user[2])
