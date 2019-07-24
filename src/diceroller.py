@@ -13,22 +13,27 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import asyncio
 import discord
 from discord.ext import commands
 from discord.ext.commands import CommandNotFound
 from discord.voice_client import VoiceClient
 from colorama import init
+
 init()
 from colorama import Fore as F
 from colorama import Style as S
 from colorama import Back as B
 from datetime import datetime
 import random
+
 # Logging
 import logging
 from cn_globals import *
 import cndb
+
 DATABASE = cndb.CNDatabase()
+
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
 logging.basicConfig(level=logging.CRITICAL)
@@ -64,10 +69,21 @@ async def on_command_error(ctx, error):
         return
     raise error
 
+async def push_database_task():
+    global DATABASE
+    global DB_PUSH_TIMEOUT
+
+    while True:
+        DATABASE.push()
+        await asyncio.sleep(DB_PUSH_TIMEOUT)
 
 @bot.event
 async def on_ready():
     global AUTHOR
+    global DATABASE
+
+    DATABASE.pull()
+    bot.loop.create_task(push_database_task())
     # Forge a header with bot info
     now = datetime.now()
     server_count: int = len(bot.guilds)
@@ -86,7 +102,7 @@ async def on_ready():
         + F.BLUE
         + "--------------------------------------------------------------------------------"
     )
-    print("Bot connected\t\t{} [V:BETA]\t\t\t\t".format(date_time))
+    print("Bot connected\t\t{} [V:1.0]\t\t\t\t".format(date_time))
     print(
         "ID:\t\t\t{}\t\t\t\t\t\nName:\t\t\t{}\t\t\t\t\t\nOwner:\t\t\t{}\t\t\t\t\t\t\nAuthor:\t\t\t{}\t\t\t\t".format(
             bot.appinfo.id, bot.appinfo.name, bot.appinfo.owner, AUTHOR
@@ -130,7 +146,7 @@ async def on_message(message):
             )
         xp = random.randint(10, 25)
         debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
-        xp_return: int = DATABASE.update_level_db(author, xp)  # -1 if not registered
+        xp_return: int = DATABASE.update_db(author.id, xp, False, False, True)  # -1 if not registered
         if xp_return == -1:
             await message.channel.send(
                 "```User {} has been registered!```".format(author.name)
@@ -201,6 +217,12 @@ async def on_message(message):
     # Make sure commands work
     await bot.process_commands(message)
 
+@bot.event
+async def on_disconnect():
+    global DATABASE
+
+    DATABASE.push()
+    print(B.WHITE + F.RED + "Lost connection! Wrote internal state." + S.RESET_ALL)
 
 bot.remove_command("help")
 # Help messages
@@ -361,8 +383,10 @@ async def grab(ctx):
     author = ctx.message.author
     debug_console_log("grab", author)
     if RANDOM_EVENT_CURRENTLY:
-        update_success: bool = DATABASE.update_db(author.id, RANDOM_EVENT_AMOUNT, False, False)
-        if update_success:
+        update_success: int = DATABASE.update_db(
+            author.id, RANDOM_EVENT_AMOUNT, False, False, False
+        )
+        if update_success != -1:
             RANDOM_EVENT_CURRENTLY = False
             e = compose_embed(
                 0x00FF00,
@@ -398,12 +422,14 @@ async def unbox(ctx):
     if RANDOM_EVENT_CURRENTLY:
         update_success = 0
         if not CRATE_GIVES_XP:
-            update_success = DATABASE.update_db(author.id, CRATE_REWARD_AMOUNT, False, False)
+            update_success = DATABASE.update_db(
+                author.id, CRATE_REWARD_AMOUNT, False, False, False
+            )
         else:
-            update_success = DATABASE.update_level_db(author, CRATE_REWARD_AMOUNT)
+            update_success = DATABASE.update_db(author.id, CRATE_REWARD_AMOUNT, False, False, True)
             if update_success != -1:
-                update_success = True
-        if update_success:
+                update_success = 0
+        if update_success != -1:
             RANDOM_EVENT_CURRENTLY = False
             e = compose_embed(
                 0xFF0000,
@@ -443,13 +469,13 @@ async def level(ctx, user: discord.User = None):
     else:
         msg = DATABASE.register(target)
         if msg != None:
-            await ctx.send(msg)
+            await ctx.send("```User {} has been registered!```".format(target.name))
     debug_console_log(
         "level",
         author,
         "targets other: {} | target: {}".format((target != None), target),
     )
-    target_xp = DATABASE.update_level_db(target, 0)
+    target_xp = DATABASE.update_db(target.id, 0, False, False, True)
     tmp = target_xp
     level = 0
     while tmp > 0:
@@ -624,11 +650,11 @@ async def gamble(ctx, bet: int = 0):
         # fair and boring roll
         roll = random.randint(1, 100)
         # debug info
-    update_success: bool = False
+    update_success: int = 0
     debug_console_log("gamble", author, "¤{} | Won: {}".format(bet, roll > 55))
     if roll <= 55:
         update_success = DATABASE.update_db(author.id, int(bet), True)
-        if update_success:
+        if update_success != -1:
             e = compose_embed(
                 0x0000FF,
                 "I'm sorry, you just lost ¤{}!".format(bet),
@@ -646,7 +672,7 @@ async def gamble(ctx, bet: int = 0):
             return
     else:
         update_success = DATABASE.update_db(author.id, int(bet), False)
-        if update_success:
+        if update_success != -1:
             e = compose_embed(
                 0x00FF00,
                 "Congratulations! You just won ¤{}".format(bet),
@@ -673,33 +699,15 @@ async def bal(ctx):
 	Requires:
 			user must be registered
 	"""
-    global DB
+    global DATABASE
 
-    author = ctx.message.author
-    line: str = "0000000000000"
-    with open(DB, "r+") as db:  # getting really tired of file i/o
-        while line != "":
-            try:
-                line = db.readline()
-                if str(author.id) in line:
-                    split: list = line.split(
-                        "/"
-                    )  # if we find them, respond with their balance and cease
-                    bal: str = split[1].rstrip()
-                    debug_console_log("bal", author, "Has: ¤{}".format(bal))
-                    e = compose_embed(
-                        0x00FF00,
-                        "{} has ¤{}".format(author.name, bal),
-                        "ID: {}".format(author.id),
-                    )
-                    await ctx.send(embed=e)
-                    return
-            except StopIteration:
-                debug_console_log("bal", author, "Error: User not found")
-                e = compose_embed(
-                    0xFF0000, "Error retrieving balance", "Contact an administrator"
-                )
-                await ctx.send(embed=e)
+    balance = DATABASE.update_db(ctx.author.id, 0, False, False)
+    e = compose_embed(
+        0x00FF00,
+        "Zet has ¤{}".format(balance),
+        "ID: {}".format(ctx.author.id)
+    )
+    await ctx.send(embed=e)
 
 
 # Get some debug info in the console
@@ -712,59 +720,18 @@ async def debug(ctx):
 	Requires:
 			Administrator permission, to stop users from spamming the console with debug info
 	"""
-    global DB
-    global DB_LEVEL
+    global DATABASE
+
     author = ctx.message.author
     is_admin: bool = author.top_role.permissions.administrator
     debug_console_log("debug", author)
     # I really dont want people to spam debug info
     if is_admin:
-        registered_users: int = 0
-        total_balance: int = 0
-        total_xp: int = 0
-        line: str = "0000000000000"
-        lv_line: str = "0000000000000"
-        print(S.BRIGHT + B.WHITE + F.BLUE)
-        with open(DB_LEVEL, "r+") as ldb:
-            with open(DB, "r+") as db:  # getting really tired of file i/o
-                while line != "":
-                    try:
-                        line = (
-                            db.readline()
-                        )  # calculate totals and print individual info
-                        lv_line = ldb.readline()
-                        split: list = line.split("/")
-                        lv_split: list = lv_line.split("/")
-                        if (
-                            len(split) > 1 and len(lv_split) > 1
-                        ):  # ghost users are a thing
-                            bal: str = split[1]
-                            xp: str = lv_split[1]
-                            registered_users += 1
-                            total_balance += int(bal)
-                            total_xp += int(xp)
-                            print(
-                                "User: {} - Balance: ¤{} - XP: {}".format(
-                                    split[0].rstrip(), bal.rstrip(), xp.rstrip()
-                                )
-                            )
-                    except StopIteration:
-                        debug_console_log(
-                            "debug", author, "Error: Hit EOF before end of loop"
-                        )
-                        break
-        print(
-            "Total users: {}\t\tTotal balance: ¤{}\t\tTotal xp: {}".format(
-                registered_users, total_balance, total_xp
-            )
-        )
-        print(S.RESET_ALL)
+        DATABASE.print_internal_state()
         e = compose_embed(
-            0xFF00FF,
-            "Registered users: {} - Total balance: {} - Total XP: {}".format(
-                registered_users, total_balance, total_xp
-            ),
-            "Detailed info sent to the console!",
+            0x00FF00,
+            "Information on the internal state sent to the console!",
+            "ID: {}".format(author.id)
         )
         await ctx.send(embed=e)
     else:
@@ -796,8 +763,8 @@ async def update(ctx, user: discord.User, amount: int):
     )
     # I really dont want normal people to do this
     if is_admin:
-        update_success: bool = DATABASE.update_db(user.id, amount, False, False)
-        if update_success:
+        update_success: int = DATABASE.update_db(user.id, amount, False, False)
+        if update_success != -1:
             e = compose_embed(
                 0xFF00FF,
                 "Added ¤{} to {}'s balance!".format(amount, user.name),
@@ -858,8 +825,8 @@ async def raffle(ctx, prize: int):
                         )
             roll = random.randint(0, len(user_ids) - 1)
             winner_id = user_ids[roll]
-        update_success: bool = DATABASE.update_db(winner_id, prize, False, False)
-        if update_success:
+        update_success: int = DATABASE.update_db(winner_id, prize, False, False)
+        if update_success != -1:
             e = compose_embed(
                 0x00FF00,
                 "Congratulations, <@{}>!".format(winner_id),
@@ -894,18 +861,20 @@ async def pay(ctx, user: discord.User, amount: int):
 
     user_from = ctx.message.author
     user_to = user
-    msg = register(user_to)
+    msg = DATABASE.register(user_to)
     if msg != None:
-        await ctx.send(msg)
+        await ctx.send("```User {} has been registered!```".format(user_to.name))
     debug_console_log(
         "pay",
         user_from,
         "Target: ({}) {}, amount: ¤{}".format(user_to.id, user_to.name, amount),
     )
-    update_success_deduct: bool = DATABASE.update_db(user_from.id, amount, True)
-    if update_success_deduct:
-        update_success_increase: bool = DATABASE.update_db(user_to.id, amount, False, False)
-        if update_success_increase:
+    update_success_deduct: int = DATABASE.update_db(user_from.id, amount, True)
+    if update_success_deduct != -1:
+        update_success_increase: int = DATABASE.update_db(
+            user_to.id, amount, False, False
+        )
+        if update_success_increase != -1:
             e = compose_embed(
                 0x00FF00,
                 "Sucessfully sent ¤{} to {}!".format(amount, user_to.name),
@@ -914,8 +883,10 @@ async def pay(ctx, user: discord.User, amount: int):
             await ctx.send(embed=e)
             return
         else:
-            update_success_reset: bool = DATABASE.update_db(user_from.id, amount, False, False)
-            if update_success_reset:
+            update_success_reset: int = DATABASE.update_db(
+                user_from.id, amount, False, False
+            )
+            if update_success_reset != -1:
                 e = compose_embed(
                     0xFF0000, "Error during transfer", "You have not been charged"
                 )
@@ -946,7 +917,7 @@ async def order(ctx, drink: str = "empty"):
 			Enough money to buy the required drink, aswell as the drink to buy.
 	"""
     global DATABASE
-    
+
     author = ctx.message.author
     debug_console_log("order", author, "Drink: {}".format(drink))
     # Dict would be preferable but I'm tired and just want to iterate
@@ -965,8 +936,8 @@ async def order(ctx, drink: str = "empty"):
     else:
         if drink.lower() in drinks:
             price = prices[drinks.index(drink.lower())]
-            update_success: bool = DATABASE.update_db(author.id, price, True)
-            if update_success:
+            update_success: int = DATABASE.update_db(author.id, price, True)
+            if update_success != -1:
                 e = compose_embed(
                     0xFFFFFF,
                     "You buy a class of {}".format(drink.lower()),
