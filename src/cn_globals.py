@@ -2,7 +2,6 @@
 RIGGED = False
 DB = "DB/database.cndb"
 DBTMP = "DB/tmp.cncrypt"
-DB_LEVEL = "DB/leveldatabase.cndb"
 AUTHOR = "Zet#1024 (github.com/ZexZee)"
 RANDOM_EVENT_CURRENTLY = False
 RANDOM_EVENT_AMOUNT = 0
@@ -12,6 +11,7 @@ CRATE_REWARD_AMOUNT = 0
 FILTER_USERS = False
 FILTER_BOTS = False
 FILTER_LOGS = False
+DB_PUSH_TIMEOUT = 60.0
 
 # OC dont steal
 TOKEN = ""
