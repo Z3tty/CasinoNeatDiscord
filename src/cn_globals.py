@@ -12,6 +12,7 @@ FILTER_USERS = False
 FILTER_BOTS = False
 FILTER_LOGS = False
 DB_PUSH_TIMEOUT = 60.0
+HAS_CHANGED = False
 
 # OC dont steal
 TOKEN = ""
