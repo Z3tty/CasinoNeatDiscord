@@ -1,142 +1,117 @@
 from cn_globals import *
 import discord
+from colorama import init
+
+init()
+from colorama import Fore as F
+from colorama import Style as S
+from colorama import Back as B
+
 
 class CNDatabase:
-	def __init__(self):
-		pass
-	# Helper function. Registers a user to the bot DB
-	def register(self, user: discord.User):
-	    global DB
-	    global DB_LEVEL
+    _db_separator: str = "/"
+    _db_map_index: int = 0
+    _db_map: list = [["", "", ""]]
 
-	    line: str = "0000000000000"
-	    with open(DB, "r+") as db:  # ah shit, here we go again
-	        while line != "":
-	            try:
-	                line = db.readline()  # check users
-	                if str(user.id) in line:
-	                    split: list = line.split("/")
-	                    return None
-	            except StopIteration:  # register them if they're not in the DB
-	                debug_console_log("register", user, "Error: Hit EOF before end of loop")
-	        db.write(str(user.id) + "/1000\n")
-	    line = "0000000000000"
-	    with open(DB_LEVEL, "r+") as ldb:  # ah shit, here we go again
-	        while line != "":
-	            try:
-	                line = ldb.readline()  # check users
-	                if str(user.id) in line:
-	                    split: list = line.split("/")
-	                    return None
-	            except StopIteration:  # register them if they're not in the DB
-	                debug_console_log("register", user, "Error: Hit EOF before end of loop")
-	        ldb.write(str(user.id) + "/0\n")
-	    return "```User {} has been registered!```".format(user.name)
+    def __init__(self):
+        pass
 
-	# Helper function. Does all of the interfacing between the bot and the DB
-	def update_db(self, userid, amount: int, sub: bool, isBet: bool = True) -> bool:
-	    global DB
-	    global DBTMP
+    def pull(self) -> None:
+        global DB
 
-	    line = "0000000000"
-	    # HERE WE GOOO
-	    with open(DB, "r+") as db:
-	        while line != "":
-	            try:  # Use exceptions to find the EOF
-	                line = db.readline()
-	                if str(userid) in line:  # If we found the user
-	                    split: list = line.split("/")  # Get the balance and id seperately
-	                    bal: str = split[1]
-	                    if int(bal) < amount and isBet:  # cant bet more than you have
-	                        return False
-	                    if sub:
-	                        bal = str(int(bal) - amount)
-	                    else:
-	                        bal = str(int(bal) + amount)
-	                    newline = str(userid) + "/" + str(bal)  # make the new db entry
-	                    tmpdata = "0000000"
-	                    with open(DBTMP, "w") as clear:  # clear the tmp file, just in case
-	                        clear.write("")
-	                    with open(
-	                        DBTMP, "r+"
-	                    ) as tmp:  # transfer all db info to temporary storage
-	                        with open(DB, "r+") as db:
-	                            while tmpdata != "":
-	                                dbline = db.readline()
-	                                tmpdata = dbline
-	                                if (
-	                                    dbline == line
-	                                ):  # write the new line instead of the old one
-	                                    tmp.write(newline + "\n")
-	                                else:
-	                                    tmp.write(dbline + "\n")
-	                    tmpdata = "0000000"
-	                    with open(DB, "w") as clear:  # clear the db
-	                        clear.write("")
-	                    with open(DB, "r+") as db:  # rewrite the db for future use
-	                        with open(DBTMP, "r+") as tmp:
-	                            while tmpdata != "":
-	                                tmpdata = tmp.readline()
-	                                if tmpdata != "\n":
-	                                    db.write(tmpdata)
-	                    with open(
-	                        DBTMP, "w"
-	                    ) as clear:  # clear tmp to have it ready for the next pass
-	                        clear.write("")
-	                    return True
-	            except StopIteration:
-	                return False
-	# Helper function. Does all of the interfacing between the bot and the DB
-	# Returns -1 if not registered, then registers.
-	def update_level_db(self, user, amount: int) -> int:
-	    global DB_LEVEL
-	    global DBTMP
+        line: str = "0000000000000000"
+        with open(DB, "r") as db:
+            while line != "":
+                try:
+                    line = db.readline().rstrip().lstrip()  # check users
+                    split: list = line.split(self._db_separator)
+                    if len(split) > 2:
+                        self._db_map[self._db_map_index][0] = split[0]
+                        self._db_map[self._db_map_index][1] = split[1]
+                        self._db_map[self._db_map_index][2] = split[2]
+                        print( B.BLUE + F.WHITE + 
+                            "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp".format(
+                                self._db_map[self._db_map_index][0],
+                                self._db_map[self._db_map_index][1],
+                                self._db_map[self._db_map_index][2],
+                            ) + S.RESET_ALL
+                        )
+                        self._db_map_index += 1
+                except StopIteration:
+                    print(
+                        "CNDB :: Pull -> End of file encountered when reading through data stored on disk"
+                    )
 
-	    xp_after_update: int = 0
-	    userid = user.id
-	    line = "0000000000"
-	    # HERE WE GOOO
-	    with open(DB_LEVEL, "r+") as db:
-	        while line != "":
-	            try:  # Use exceptions to find the EOF
-	                line = db.readline()
-	                if str(userid) in line:  # If we found the user
-	                    split: list = line.split("/")  # Get the balance and id seperately
-	                    xp: str = split[1]
-	                    xp_after_update = int(xp) + amount
-	                    newline = (
-	                        str(userid) + "/" + str(xp_after_update)
-	                    )  # make the new db entry
-	                    tmpdata = "0000000"
-	                    with open(DBTMP, "w") as clear:  # clear the tmp file, just in case
-	                        clear.write("")
-	                    with open(
-	                        DBTMP, "r+"
-	                    ) as tmp:  # transfer all db info to temporary storage
-	                        with open(DB_LEVEL, "r+") as db:
-	                            while tmpdata != "":
-	                                dbline = db.readline()
-	                                tmpdata = dbline
-	                                if (
-	                                    dbline == line
-	                                ):  # write the new line instead of the old one
-	                                    tmp.write(newline + "\n")
-	                                else:
-	                                    tmp.write(dbline + "\n")
-	                    tmpdata = "0000000"
-	                    with open(DB_LEVEL, "w") as clear:  # clear the db
-	                        clear.write("")
-	                    with open(DB_LEVEL, "r+") as db:  # rewrite the db for future use
-	                        with open(DBTMP, "r+") as tmp:
-	                            while tmpdata != "":
-	                                tmpdata = tmp.readline()
-	                                if tmpdata != "\n":
-	                                    db.write(tmpdata)
-	                    with open(
-	                        DBTMP, "w"
-	                    ) as clear:  # clear tmp to have it ready for the next pass
-	                        clear.write("")
-	                    return xp_after_update
-	            except StopIteration:
-	                register(user)
-	                return -1
+    def push(self) -> None:
+        global DB
+
+        with open(DB, "w") as clear:
+            clear.write("")
+        if self._db_map_index != 0:
+            self._db_map_index = 0
+            line: str = "0000000000000000"
+            with open(DB, "a") as db:
+                try:
+                    line = "{}{}{}{}{}".format(
+                        self._db_map[self._db_map_index][0],
+                        self._db_separator,
+                        self._db_map[self._db_map_index][1],
+                        self._db_separator,
+                        self._db_map[self._db_map_index][2]
+                    )
+                    db.write(line)
+                    print( B.BLUE + F.WHITE + 
+                        "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp".format(
+                            self._db_map[self._db_map_index][0],
+                            self._db_map[self._db_map_index][1],
+                            self._db_map[self._db_map_index][2],
+                        ) + S.RESET_ALL
+                    )
+                    self._db_map_index += 1
+                except StopIteration:
+                    print(
+                        "CNDB :: Push -> End of file encountered when writing data to disk" 
+                    )
+
+    # Helper function. Registers a user to the bot DB
+    def register(self, user: discord.User):
+        userid: str = str(user.id)
+        for user in self._db_map:
+            if user[0] == userid:
+                return None
+        new_user: list = [userid, "1000", "0"]
+        if self._db_map_index == 0:
+            self._db_map[0] = new_user
+        else:
+            self._db_map.append(new_user)
+        self._db_map_index += 1
+        return -1
+
+    # Helper function. Does all of the interfacing between the bot and the DB
+    def update_db(self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False) -> int:
+        for user in self._db_map:
+            if user[0] == str(userid):
+                if isXP:
+                    user[2] = int(user[2]) + amount
+                    return int(user[2])
+                else:
+                    if isBet:
+                        if amount > int(user[1]):
+                            return False
+                        if sub:
+                            user[1] = str(int(user[1]) - amount)
+                        else:
+                            user[1] = str(int(user[1]) + amount)
+                    else:
+                        if sub:
+                            user[1] = str(int(user[1]) - amount)
+                        else:
+                            user[1] = str(int(user[1]) + amount)
+                    return int(user[1])
+        self.register(user)
+        return -1
+
+
+    def print_internal_state(self) -> None:
+        for user in self._db_map:
+            print(user)
