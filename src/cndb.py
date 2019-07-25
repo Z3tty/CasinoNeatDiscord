@@ -11,7 +11,7 @@ from colorama import Back as B
 class CNDatabase:
     _db_separator: str = "/"
     _db_map_index: int = 0
-    _db_map: list = [["", "", ""]]
+    _db_map: list = []
 
     def __init__(self):
         pass
@@ -26,9 +26,8 @@ class CNDatabase:
                     line = db.readline().rstrip().lstrip()  # check users
                     split: list = line.split(self._db_separator)
                     if len(split) > 2:
-                        self._db_map[self._db_map_index][0] = split[0]
-                        self._db_map[self._db_map_index][1] = split[1]
-                        self._db_map[self._db_map_index][2] = split[2]
+                        usr: list = [split[0], split[1], split[2]]
+                        self._db_map.append(usr)
                         print( B.BLUE + F.WHITE + 
                             "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp".format(
                                 self._db_map[self._db_map_index][0],
@@ -83,10 +82,7 @@ class CNDatabase:
             if user[0] == userid:
                 return None
         new_user: list = [userid, "1000", "0"]
-        if self._db_map_index == 0:
-            self._db_map[0] = new_user
-        else:
-            self._db_map.append(new_user)
+        self._db_map.append(new_user)
         self._db_map_index += 1
         return -1
 
