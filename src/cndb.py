@@ -46,34 +46,35 @@ class CNDatabase:
         global DB
         global HAS_CHANGED
 
-        with open(DB, "w") as clear:
-            clear.write("")
         if self._db_map_index != 0 and HAS_CHANGED:
+            with open(DB, "w") as clear:
+                clear.write("")
             self._db_map_index = 0
             line: str = "0000000000000000"
             with open(DB, "a") as db:
-                try:
-                    line = "{}{}{}{}{}".format(
-                        self._db_map[self._db_map_index][0],
-                        self._db_separator,
-                        self._db_map[self._db_map_index][1],
-                        self._db_separator,
-                        self._db_map[self._db_map_index][2]
-                    )
-                    db.write(line)
-                    print( B.BLUE + F.WHITE + 
-                        "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp".format(
+                while line != "" and self._db_map_index < len(self._db_map):
+                    try:
+                        line = "{}{}{}{}{}\n".format(
                             self._db_map[self._db_map_index][0],
+                            self._db_separator,
                             self._db_map[self._db_map_index][1],
-                            self._db_map[self._db_map_index][2],
-                        ) + S.RESET_ALL
-                    )
-                    self._db_map_index += 1
-                except StopIteration:
-                    print(
-                        "CNDB :: Push -> End of file encountered when writing data to disk" 
-                    )
-            HAS_CHANGED = False
+                            self._db_separator,
+                            self._db_map[self._db_map_index][2]
+                        )
+                        db.write(line)
+                        print( B.BLUE + F.WHITE + 
+                            "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp".format(
+                                self._db_map[self._db_map_index][0],
+                                self._db_map[self._db_map_index][1],
+                                self._db_map[self._db_map_index][2],
+                            ) + S.RESET_ALL
+                        )
+                        self._db_map_index += 1
+                    except StopIteration:
+                        print(
+                            "CNDB :: Push -> End of file encountered when writing data to disk" 
+                        )
+                HAS_CHANGED = False
 
     # Helper function. Registers a user to the bot DB
     def register(self, user: discord.User):
@@ -113,7 +114,6 @@ class CNDatabase:
                         else:
                             user[1] = str(int(user[1]) + amount)
                     return int(user[1])
-        self.register(user)
         return -1
 
 
