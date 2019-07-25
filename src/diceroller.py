@@ -750,6 +750,9 @@ async def update(ctx, user: discord.User, amount: int):
     global DATABASE
 
     author = ctx.message.author
+    msg = DATABASE.register(user)
+    if msg != None:
+        await ctx.send("```User {} has been registered!```".format(user.name))
     is_admin: bool = author.top_role.permissions.administrator
     debug_console_log(
         "update",
