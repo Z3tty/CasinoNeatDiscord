@@ -259,6 +259,11 @@ async def help(ctx):
         inline=False,
     )
     msg.add_field(
+        name="?daily",
+        value="Claim a daily cash bonus.\nAlias=[d]",
+        inline=False,
+    )
+    msg.add_field(
         name="?order <drink>",
         value="Buy a drink! userexperiencenotguaranteed",
         inline=False,
@@ -483,6 +488,28 @@ async def level(ctx, user: discord.User = None):
     )
     await ctx.send(embed=e)
 
+@bot.command(aliases=["d"])
+async def daily(ctx):
+    global DATABASE
+    global DAILY_BONUS
+
+    author = ctx.message.author
+    daily_success: bool = DATABASE.update_daily(author.id)
+    debug_console_log("daily", author, "success: {}".format(daily_success))
+    e = compose_embed(0xFFFFFF, "BLANK", "BLANK")
+    if daily_success:
+        e = compose_embed(
+            0x00FF00,
+            "{} just claimed their daily reward of {}!".format(author.name, DAILY_BONUS),
+            "ID: {}".format(author.id)
+        )
+    else:
+        e = compose_embed(
+            0xFF0000,
+            "You can only claim one daily per day!",
+            "ID: {}".format(author.id)
+        )
+    await ctx.send(embed=e)
 
 # Roll a dice with a variable amount of sides
 @bot.command(aliases=["r"])
