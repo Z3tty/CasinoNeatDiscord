@@ -6,7 +6,7 @@ init()
 from colorama import Fore as F
 from colorama import Style as S
 from colorama import Back as B
-
+from datetime import datetime as dt
 
 class CNDatabase:
     _db_separator: str = "/"
@@ -26,13 +26,14 @@ class CNDatabase:
                     line = db.readline().rstrip().lstrip()  # check users
                     split: list = line.split(self._db_separator)
                     if len(split) > 2:
-                        usr: list = [split[0], split[1], split[2]]
+                        usr: list = [split[0], split[1], split[2], split[3]]
                         self._db_map.append(usr)
                         print( B.BLUE + F.WHITE + 
-                            "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp".format(
+                            "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp : Last Daily: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
+                                self._db_map[self._db_map_index][3]
                             ) + S.RESET_ALL
                         )
                         self._db_map_index += 1
@@ -53,19 +54,22 @@ class CNDatabase:
             with open(DB, "a") as db:
                 while line != "" and self._db_map_index < len(self._db_map):
                     try:
-                        line = "{}{}{}{}{}\n".format(
+                        line = "{}{}{}{}{}{}{}\n".format(
                             self._db_map[self._db_map_index][0],
                             self._db_separator,
                             self._db_map[self._db_map_index][1],
                             self._db_separator,
-                            self._db_map[self._db_map_index][2]
+                            self._db_map[self._db_map_index][2],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][3]
                         )
                         db.write(line)
                         print( B.BLUE + F.WHITE + 
-                            "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp".format(
+                            "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp : Last Daily: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
+                                self._db_map[self._db_map_index][3]
                             ) + S.RESET_ALL
                         )
                         self._db_map_index += 1
@@ -75,18 +79,18 @@ class CNDatabase:
                         )
                 HAS_CHANGED = False
 
-    # Helper function. Registers a user to the bot DB
+    # Registers a user to the bot DB
     def register(self, user: discord.User):
         userid: str = str(user.id)
         for user in self._db_map:
             if user[0] == userid:
                 return None
-        new_user: list = [userid, "1000", "0"]
+        new_user: list = [userid, "1000", "0", "-1"]
         self._db_map.append(new_user)
         self._db_map_index += 1
         return -1
 
-    # Helper function. Does all of the interfacing between the bot and the DB
+    # Does all of the interfacing between the bot and the DB
     def update_db(self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False) -> int:
         global HAS_CHANGED
 
@@ -116,3 +120,30 @@ class CNDatabase:
     def print_internal_state(self) -> None:
         for user in self._db_map:
             print(user)
+
+
+    def update_daily(self, userid) -> bool:
+        allowed = False
+        user = []
+        index = 0
+        for u in self._db_map:
+            if u[0] == str(userid):
+                user = u
+                break
+            else:
+                index += 1
+        if user == []:
+            print("Error: No user found")
+            print("Got: {}".format(user))
+            return False
+        last = user[3]
+        now = dt.today()
+        if last != str(str(now.year)+str(now.month)+str(now.day)):
+            allowed = True
+        if allowed:
+            user[3] = str(str(now.year)+str(now.month)+str(now.day))
+            user[1] = str(int(user[1]) + DAILY_BONUS)
+            self._db_map[index] = user
+            return True
+        else:
+            return False
