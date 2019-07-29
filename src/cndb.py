@@ -103,7 +103,7 @@ class CNDatabase:
                 else:
                     if isBet:
                         if amount > int(user[1]):
-                            return False
+                            return -1
                         if sub:
                             user[1] = str(int(user[1]) - amount)
                         else:
