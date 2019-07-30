@@ -733,10 +733,9 @@ async def bal(ctx):
 	"""
     global DATABASE
 
-    balance = DATABASE.update_db(ctx.author.id, 0, False, False)
-    e = compose_embed(
-        0x00FF00, "Zet has ¤{}".format(balance), "ID: {}".format(ctx.author.id)
-    )
+    author = ctx.message.author
+    balance = DATABASE.update_db(author.id, 0, False, False)
+    e = compose_embed(0x00FF00, "{} has ¤{}".format(author.name, balance), "ID: {}".format(author.id))
     await ctx.send(embed=e)
 
 
