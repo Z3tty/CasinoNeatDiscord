@@ -8,6 +8,7 @@ from colorama import Style as S
 from colorama import Back as B
 from datetime import datetime as dt
 
+
 class CNDatabase:
     _db_separator: str = "/"
     _db_map_index: int = 0
@@ -26,15 +27,19 @@ class CNDatabase:
                     line = db.readline().rstrip().lstrip()  # check users
                     split: list = line.split(self._db_separator)
                     if len(split) > 2:
-                        usr: list = [split[0], split[1], split[2], split[3]]
+                        usr: list = split
                         self._db_map.append(usr)
-                        print( B.BLUE + F.WHITE + 
-                            "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp : Last Daily: {}".format(
+                        print(
+                            B.BLUE
+                            + F.WHITE
+                            + "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp : Last Daily: {}, Daily Streak: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
-                                self._db_map[self._db_map_index][3]
-                            ) + S.RESET_ALL
+                                self._db_map[self._db_map_index][3],
+                                self._db_map[self._db_map_index][4],
+                            )
+                            + S.RESET_ALL
                         )
                         self._db_map_index += 1
                 except StopIteration:
@@ -54,28 +59,34 @@ class CNDatabase:
             with open(DB, "a") as db:
                 while line != "" and self._db_map_index < len(self._db_map):
                     try:
-                        line = "{}{}{}{}{}{}{}\n".format(
+                        line = "{}{}{}{}{}{}{}{}{}\n".format(
                             self._db_map[self._db_map_index][0],
                             self._db_separator,
                             self._db_map[self._db_map_index][1],
                             self._db_separator,
                             self._db_map[self._db_map_index][2],
                             self._db_separator,
-                            self._db_map[self._db_map_index][3]
+                            self._db_map[self._db_map_index][3],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][4],
                         )
                         db.write(line)
-                        print( B.BLUE + F.WHITE + 
-                            "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp : Last Daily: {}".format(
+                        print(
+                            B.BLUE
+                            + F.WHITE
+                            + "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp : Last Daily: {}, Daily Streak: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
-                                self._db_map[self._db_map_index][3]
-                            ) + S.RESET_ALL
+                                self._db_map[self._db_map_index][3],
+                                self._db_map[self._db_map_index][4],
+                            )
+                            + S.RESET_ALL
                         )
                         self._db_map_index += 1
                     except StopIteration:
                         print(
-                            "CNDB :: Push -> End of file encountered when writing data to disk" 
+                            "CNDB :: Push -> End of file encountered when writing data to disk"
                         )
                 HAS_CHANGED = False
 
@@ -85,13 +96,15 @@ class CNDatabase:
         for user in self._db_map:
             if user[0] == userid:
                 return None
-        new_user: list = [userid, "1000", "0", "-1"]
+        new_user: list = [userid, "1000", "0", "-1", "0"]
         self._db_map.append(new_user)
         self._db_map_index += 1
         return -1
 
     # Does all of the interfacing between the bot and the DB
-    def update_db(self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False) -> int:
+    def update_db(
+        self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False
+    ) -> int:
         global HAS_CHANGED
 
         for user in self._db_map:
@@ -116,13 +129,14 @@ class CNDatabase:
                     return int(user[1])
         return -1
 
-
     def print_internal_state(self) -> None:
         for user in self._db_map:
             print(user)
 
+    def update_daily(self, userid) -> (int, int):
+        global DAILY_BONUS
+        global DAILY_STREAK_SCALAR
 
-    def update_daily(self, userid) -> bool:
         allowed = False
         user = []
         index = 0
@@ -135,15 +149,27 @@ class CNDatabase:
         if user == []:
             print("Error: No user found")
             print("Got: {}".format(user))
-            return False
+            return (-1, -1)
         last = user[3]
         now = dt.today()
-        if last != str(str(now.year)+str(now.month)+str(now.day)):
+        daily_str = str(str(now.year) + str(now.month) + str(now.day))
+        if last != daily_str:
             allowed = True
         if allowed:
-            user[3] = str(str(now.year)+str(now.month)+str(now.day))
-            user[1] = str(int(user[1]) + DAILY_BONUS)
+            user[3] = daily_str
+            current_streak = int(user[4])
+            if int(last) == int(daily_str) - 1:
+                current_streak += 1
+            else:
+                current_streak = 0
+            user[1] = str(
+                int(user[1]) + DAILY_BONUS * (current_streak * DAILY_STREAK_SCALAR)
+            )
+            user[4] = str(current_streak)
             self._db_map[index] = user
-            return True
+            return (
+                DAILY_BONUS * (current_streak * DAILY_STREAK_SCALAR),
+                current_streak,
+            )
         else:
-            return False
+            return (-1, -1)
