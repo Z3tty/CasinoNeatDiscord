@@ -837,7 +837,6 @@ async def pay(ctx, user: discord.User, amount: int):
         e = compose_embed(0xFF0000, "Giving yourself an allowance is weird, man", "C'mon, you're better than this")
         await ctx.send(embed=e)
         return
-    msg = DATABASE.register(user_to)
     if amount < 0:
         e = compose_embed(0xFF0000, "Theft is illegal", "The authorities have been alerted.")
         await ctx.send(embed=e)
@@ -849,6 +848,7 @@ async def pay(ctx, user: discord.User, amount: int):
         e = compose_embed(0xFF0000, "Bot's dont have money, silly", "C'mon")
         await ctx.send(embed=e)
         return
+    msg = DATABASE.register(user_to)
     if msg != None:
         await ctx.send("```User {} has been registered!```".format(user_to.name))
     debug_console_log(
