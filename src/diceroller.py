@@ -69,6 +69,7 @@ async def on_command_error(ctx, error):
         return
     raise error
 
+
 async def push_database_task():
     global DATABASE
     global DB_PUSH_TIMEOUT
@@ -76,6 +77,7 @@ async def push_database_task():
     while True:
         DATABASE.push()
         await asyncio.sleep(DB_PUSH_TIMEOUT)
+
 
 @bot.event
 async def on_ready():
@@ -146,7 +148,9 @@ async def on_message(message):
             )
         xp = random.randint(10, 25)
         debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
-        xp_return: int = DATABASE.update_db(author.id, xp, False, False, True)  # -1 if not registered
+        xp_return: int = DATABASE.update_db(
+            author.id, xp, False, False, True
+        )  # -1 if not registered
         if xp_return == -1:
             await message.channel.send(
                 "```User {} has been registered!```".format(author.name)
@@ -217,12 +221,14 @@ async def on_message(message):
     # Make sure commands work
     await bot.process_commands(message)
 
+
 @bot.event
 async def on_disconnect():
     global DATABASE
 
     DATABASE.push()
     print(B.WHITE + F.RED + "Lost connection! Wrote internal state." + S.RESET_ALL)
+
 
 bot.remove_command("help")
 # Help messages
@@ -259,9 +265,7 @@ async def help(ctx):
         inline=False,
     )
     msg.add_field(
-        name="?daily",
-        value="Claim a daily cash bonus.\nAlias=[d]",
-        inline=False,
+        name="?daily", value="Claim a daily cash bonus.\nAlias=[d]", inline=False
     )
     msg.add_field(
         name="?order <drink>",
@@ -426,7 +430,9 @@ async def unbox(ctx):
                 author.id, CRATE_REWARD_AMOUNT, False, False, False
             )
         else:
-            update_success = DATABASE.update_db(author.id, CRATE_REWARD_AMOUNT, False, False, True)
+            update_success = DATABASE.update_db(
+                author.id, CRATE_REWARD_AMOUNT, False, False, True
+            )
             if update_success != -1:
                 update_success = 0
         if update_success != -1:
@@ -488,28 +494,32 @@ async def level(ctx, user: discord.User = None):
     )
     await ctx.send(embed=e)
 
+
 @bot.command(aliases=["d"])
 async def daily(ctx):
     global DATABASE
     global DAILY_BONUS
 
     author = ctx.message.author
-    daily_success: bool = DATABASE.update_daily(author.id)
-    debug_console_log("daily", author, "success: {}".format(daily_success))
+    daily_success: int = DATABASE.update_daily(author.id)
+    debug_console_log("daily", author, "success: {}".format(daily_success != -1))
     e = compose_embed(0xFFFFFF, "BLANK", "BLANK")
-    if daily_success:
+    if daily_success[0] != -1:
         e = compose_embed(
             0x00FF00,
-            "{} just claimed their daily reward of {}!".format(author.name, DAILY_BONUS),
-            "ID: {}".format(author.id)
+            "{} just claimed their daily reward of {} with a streak of {} days!!".format(
+                author.name, daily_success[0], daily_success[1]
+            ),
+            "ID: {}".format(author.id),
         )
     else:
         e = compose_embed(
             0xFF0000,
             "You can only claim one daily per day!",
-            "ID: {}".format(author.id)
+            "ID: {}".format(author.id),
         )
     await ctx.send(embed=e)
+
 
 # Roll a dice with a variable amount of sides
 @bot.command(aliases=["r"])
@@ -725,9 +735,7 @@ async def bal(ctx):
 
     balance = DATABASE.update_db(ctx.author.id, 0, False, False)
     e = compose_embed(
-        0x00FF00,
-        "Zet has ¤{}".format(balance),
-        "ID: {}".format(ctx.author.id)
+        0x00FF00, "Zet has ¤{}".format(balance), "ID: {}".format(ctx.author.id)
     )
     await ctx.send(embed=e)
 
@@ -753,7 +761,7 @@ async def debug(ctx):
         e = compose_embed(
             0x00FF00,
             "Information on the internal state sent to the console!",
-            "ID: {}".format(author.id)
+            "ID: {}".format(author.id),
         )
         await ctx.send(embed=e)
     else:
