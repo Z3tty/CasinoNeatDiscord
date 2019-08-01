@@ -152,7 +152,25 @@ class CNDatabase:
             return (-1, -1)
         last = user[3]
         now = dt.today()
-        daily_str = str(str(now.year) + str(now.month) + str(now.day))
+        day: str = str(now.day)
+        month: str = str(now.month)
+        if int(day) < 10:
+            day = "0{}".format(day)
+        if int(month) < 10:
+            month = "0{}".format(month)
+        daily_str = str(str(now.year) + month + day)
+        last_month: str = str(last[len(last)-4])+str(last[len(last)-3])
+        last_day: str = str(last[len(last)-2])+str(last[len(last)-1])
+        if last_month in ["01", "03", "05", "07", "08", "10", "12"]:
+            if day == "01" and last_day == "31":
+                last = str(int(daily_str) -1)
+        if last_month == "02":
+            if day == "01" and last_day == "28":
+                last = str(int(daily_str) -1)
+        else:
+            if day == "01" and last_day == "30":
+                last = str(int(daily_str) -1)
+        print("Last daily: {}, todays daily: {}".format(last, daily_str))
         if last != daily_str:
             allowed = True
         if allowed:
@@ -163,12 +181,12 @@ class CNDatabase:
             else:
                 current_streak = 0
             user[1] = str(
-                int(user[1]) + DAILY_BONUS * (current_streak * DAILY_STREAK_SCALAR)
+                int(user[1]) + DAILY_BONUS + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR)
             )
             user[4] = str(current_streak)
             self._db_map[index] = user
             return (
-                DAILY_BONUS * (current_streak * DAILY_STREAK_SCALAR),
+                DAILY_BONUS + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR),
                 current_streak,
             )
         else:
