@@ -845,7 +845,7 @@ async def pay(ctx, user: discord.User, amount: int):
         print("=================================================")
         return
     if user_to.bot:
-        e = compose_embed(0xFF0000, "Bot's dont have money, silly", "C'mon")
+        e = compose_embed(0xFF0000, "Bots dont have money, silly", "C'mon")
         await ctx.send(embed=e)
         return
     msg = DATABASE.register(user_to)
@@ -1009,7 +1009,7 @@ async def compliment(ctx, *args):
     # Compliments are composed just like insults are.
     preambles: list = [
         "I hope you've had a wonderful day, ",
-        "Your parents love you, and even if they dont, I sure do ",
+        "Your parents love you, and even if they dont, I sure do, ",
         "You're the standard others strive to reach, ",
         "I'm glad you exist, ",
         "Hugging through cyberspace is kinda hard, but you'd deserve it ",
