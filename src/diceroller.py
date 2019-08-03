@@ -33,6 +33,7 @@ from cn_globals import *
 import cndb
 
 DATABASE = cndb.CNDatabase()
+DATABASE.pull()
 
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
@@ -82,9 +83,7 @@ async def push_database_task():
 @bot.event
 async def on_ready():
     global AUTHOR
-    global DATABASE
 
-    DATABASE.pull()
     bot.loop.create_task(push_database_task())
     # Forge a header with bot info
     now = datetime.now()
@@ -272,6 +271,7 @@ async def help(ctx):
         value="Buy a drink! userexperiencenotguaranteed",
         inline=False,
     )
+    msg.add_field(name="?cookie <user>", value="Give someone a cookie!", inline=False)
     msg.add_field(
         name="?pay <user> <amount>",
         value="Send someone your hard-earned money.\nAlias=[give]",
@@ -370,6 +370,35 @@ async def filter(ctx, f: str):
             await ctx.send("```Filters switched! Now showing no messages```")
         else:
             await ctx.send("```Malformed argument - No such filter```")
+
+
+@bot.command()
+async def cookie(ctx, target: discord.User):
+    global DATABASE
+
+    author = ctx.message.author
+    if author.id == target.id:
+        e = compose_embed(
+            0xFF0000, "You cant give yourself a cookie", "Even if you deserve one"
+        )
+        await ctx.send(embed=e)
+        return
+    ret = DATABASE.register(target)
+    if ret != None:
+        await ctx.send("```User {} has been registered!```".format(target.name))
+    info = DATABASE.send_cookie(author.id, target.id)
+    e = compose_embed(0xFFFFFF, "", "")
+    if info == (-1, -1):
+        e = compose_embed(
+            0xFF0000, "Error sending cookie", "Must've been eaten on the way!"
+        )
+    else:
+        e = compose_embed(
+            0x00FF00,
+            "{} sent a :cookie: to {}".format(author.name, target.name),
+            ":cookie: sent: {}, :cookie: recieved: {}".format(info[0], info[1]),
+        )
+    await ctx.send(embed=e)
 
 
 @bot.command()
@@ -735,7 +764,9 @@ async def bal(ctx):
 
     author = ctx.message.author
     balance = DATABASE.update_db(author.id, 0, False, False)
-    e = compose_embed(0x00FF00, "{} has ¤{}".format(author.name, balance), "ID: {}".format(author.id))
+    e = compose_embed(
+        0x00FF00, "{} has ¤{}".format(author.name, balance), "ID: {}".format(author.id)
+    )
     await ctx.send(embed=e)
 
 
@@ -834,11 +865,17 @@ async def pay(ctx, user: discord.User, amount: int):
     user_from = ctx.message.author
     user_to = user
     if user_from == user_to:
-        e = compose_embed(0xFF0000, "Giving yourself an allowance is weird, man", "C'mon, you're better than this")
+        e = compose_embed(
+            0xFF0000,
+            "Giving yourself an allowance is weird, man",
+            "C'mon, you're better than this",
+        )
         await ctx.send(embed=e)
         return
     if amount < 0:
-        e = compose_embed(0xFF0000, "Theft is illegal", "The authorities have been alerted.")
+        e = compose_embed(
+            0xFF0000, "Theft is illegal", "The authorities have been alerted."
+        )
         await ctx.send(embed=e)
         print("=================================================")
         print("{} Attempted to steal from {}".format(user_from.name, user_to.name))
