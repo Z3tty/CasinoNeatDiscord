@@ -377,6 +377,7 @@ async def cookie(ctx, target: discord.User):
     global DATABASE
 
     author = ctx.message.author
+    debug_console_log("cookie", author)
     if author.id == target.id:
         e = compose_embed(
             0xFF0000, "You cant give yourself a cookie", "Even if you deserve one"
@@ -399,6 +400,47 @@ async def cookie(ctx, target: discord.User):
             ":cookie: sent: {}, :cookie: recieved: {}".format(info[0], info[1]),
         )
     await ctx.send(embed=e)
+
+
+@bot.command()
+async def raffle(ctx, amount: int):
+    global RIGGED
+    global DATABASE
+
+    author = ctx.message.author
+    is_admin: bool = author.top_role.permissions.administrator
+    debug_console_log("raffle", author, "Amount: {}".format(amount))
+    if is_admin:
+        userlist = DATABASE.get_user_list()
+        winner_id: str = ""
+        random.seed()
+        if RIGGED:
+            winner_id = str(author.id)
+            RIGGED = False
+        else:
+            rnd = random.randint(0, len(userlist))
+            winner_id = str(userlist[rnd])
+        ret = DATABASE.update_db(winner_id, amount, False, False, False)
+        if ret != -1:
+            await ctx.send(
+                "**Congratulations, <@{}>! You won ¤{} in the raffle hosted by {}!**".format(
+                    winner_id, amount, author.name
+                )
+            )
+        else:
+            e = compose_embed(
+                0xFF0000,
+                "Error picking raffle winner!",
+                "Please report this error, code: E010",
+            )
+            await ctx.send(embed=e)
+    else:
+        e = compose_embed(
+            0xFF0000,
+            "I dont obey plebians",
+            "Get admin and then you can boss me around",
+        )
+        await ctx.send(embed=e)
 
 
 @bot.command()
