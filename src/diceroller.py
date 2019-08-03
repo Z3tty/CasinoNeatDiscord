@@ -699,7 +699,7 @@ async def rigg(ctx):
             "How dare you!",
             "I do NOT have that kind of functionality, how dare thee!",
         )
-    await ctx.send(embed=e)
+        await ctx.send(embed=e)
 
 
 # If someone were to be so incredulous as to accuse the bot
