@@ -32,19 +32,21 @@ class CNDatabase:
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB :: Pull -> Read user with ID: {} - ¤{} : {}xp : Last Daily: {}, Daily Streak: {}".format(
+                            + "CNDB::Pull->Read user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
                                 self._db_map[self._db_map_index][3],
                                 self._db_map[self._db_map_index][4],
+                                self._db_map[self._db_map_index][5],
+                                self._db_map[self._db_map_index][6],
                             )
                             + S.RESET_ALL
                         )
                         self._db_map_index += 1
                 except StopIteration:
                     print(
-                        "CNDB :: Pull -> End of file encountered when reading through data stored on disk"
+                        "CNDB::Pull->End of file encountered when reading through data stored on disk"
                     )
 
     def push(self) -> None:
@@ -59,7 +61,7 @@ class CNDatabase:
             with open(DB, "a") as db:
                 while line != "" and self._db_map_index < len(self._db_map):
                     try:
-                        line = "{}{}{}{}{}{}{}{}{}\n".format(
+                        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
                             self._db_map[self._db_map_index][0],
                             self._db_separator,
                             self._db_map[self._db_map_index][1],
@@ -69,24 +71,30 @@ class CNDatabase:
                             self._db_map[self._db_map_index][3],
                             self._db_separator,
                             self._db_map[self._db_map_index][4],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][5],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][6],
                         )
                         db.write(line)
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB :: Push -> Wrote user with ID: {} - ¤{} : {}xp : Last Daily: {}, Daily Streak: {}".format(
+                            + "CNDB::Push->Wrote user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
                                 self._db_map[self._db_map_index][3],
                                 self._db_map[self._db_map_index][4],
+                                self._db_map[self._db_map_index][5],
+                                self._db_map[self._db_map_index][6],
                             )
                             + S.RESET_ALL
                         )
                         self._db_map_index += 1
                     except StopIteration:
                         print(
-                            "CNDB :: Push -> End of file encountered when writing data to disk"
+                            "CNDB::Push->End of file encountered when writing data to disk"
                         )
                 HAS_CHANGED = False
 
@@ -96,7 +104,7 @@ class CNDatabase:
         for user in self._db_map:
             if user[0] == userid:
                 return None
-        new_user: list = [userid, "1000", "0", "-1", "0"]
+        new_user: list = [userid, "1000", "0", "-1", "0", "0", "0"]
         self._db_map.append(new_user)
         self._db_map_index += 1
         return -1
@@ -159,17 +167,17 @@ class CNDatabase:
         if int(month) < 10:
             month = "0{}".format(month)
         daily_str = str(str(now.year) + month + day)
-        last_month: str = str(last[len(last)-4])+str(last[len(last)-3])
-        last_day: str = str(last[len(last)-2])+str(last[len(last)-1])
+        last_month: str = str(last[len(last) - 4]) + str(last[len(last) - 3])
+        last_day: str = str(last[len(last) - 2]) + str(last[len(last) - 1])
         if last_month in ["01", "03", "05", "07", "08", "10", "12"]:
             if day == "01" and last_day == "31":
-                last = str(int(daily_str) -1)
+                last = str(int(daily_str) - 1)
         if last_month == "02":
             if day == "01" and last_day == "28":
-                last = str(int(daily_str) -1)
+                last = str(int(daily_str) - 1)
         else:
             if day == "01" and last_day == "30":
-                last = str(int(daily_str) -1)
+                last = str(int(daily_str) - 1)
         print("Last daily: {}, todays daily: {}".format(last, daily_str))
         if last != daily_str:
             allowed = True
@@ -181,7 +189,9 @@ class CNDatabase:
             else:
                 current_streak = 0
             user[1] = str(
-                int(user[1]) + DAILY_BONUS + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR)
+                int(user[1])
+                + DAILY_BONUS
+                + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR)
             )
             user[4] = str(current_streak)
             self._db_map[index] = user
@@ -191,3 +201,26 @@ class CNDatabase:
             )
         else:
             return (-1, -1)
+
+    def send_cookie(self, userid_sender, userid_reciever) -> (int, int):
+        sender = []
+        reciever = []
+        sender_idx = 0
+        reciever_idx = 0
+        index = 0
+        for u in self._db_map:
+            if u[0] == str(userid_sender):
+                sender = u
+                sender_idx = index
+            if u[0] == str(userid_reciever):
+                reciever = u
+                reciever_idx = index
+            index += 1
+        if sender == [] or reciever == []:
+            return (-1, -1)
+        sender_sent = int(sender[5]) + 1
+        sender_recv = int(sender[6])
+        reciever_recv = int(reciever[6]) + 1
+        self._db_map[sender_idx][5] = str(sender_sent)
+        self._db_map[reciever_idx][6] = str(reciever_recv)
+        return (sender_sent, sender_recv)
