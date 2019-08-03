@@ -1,5 +1,21 @@
+#! /usr/bin/env python3
+"""
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 from cn_globals import *
 import discord
+import random
 from colorama import init
 
 init()
@@ -224,3 +240,9 @@ class CNDatabase:
         self._db_map[sender_idx][5] = str(sender_sent)
         self._db_map[reciever_idx][6] = str(reciever_recv)
         return (sender_sent, sender_recv)
+
+    def get_user_list(self):
+        ids = []
+        for user in self._db_map:
+            ids.append(user[0])
+        return ids
