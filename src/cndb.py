@@ -48,7 +48,7 @@ class CNDatabase:
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB::Pull->Read user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}".format(
+                            + "CNDB::Pull->Read user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}, Failed thefts: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
@@ -56,6 +56,7 @@ class CNDatabase:
                                 self._db_map[self._db_map_index][4],
                                 self._db_map[self._db_map_index][5],
                                 self._db_map[self._db_map_index][6],
+                                self._db_map[self._db_map_index][7],
                             )
                             + S.RESET_ALL
                         )
@@ -77,7 +78,7 @@ class CNDatabase:
             with open(DB, "a") as db:
                 while line != "" and self._db_map_index < len(self._db_map):
                     try:
-                        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
+                        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
                             self._db_map[self._db_map_index][0],
                             self._db_separator,
                             self._db_map[self._db_map_index][1],
@@ -91,12 +92,14 @@ class CNDatabase:
                             self._db_map[self._db_map_index][5],
                             self._db_separator,
                             self._db_map[self._db_map_index][6],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][7],
                         )
                         db.write(line)
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB::Push->Wrote user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}".format(
+                            + "CNDB::Push->Wrote user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}, Failed thefts: {}".format(
                                 self._db_map[self._db_map_index][0],
                                 self._db_map[self._db_map_index][1],
                                 self._db_map[self._db_map_index][2],
@@ -104,6 +107,7 @@ class CNDatabase:
                                 self._db_map[self._db_map_index][4],
                                 self._db_map[self._db_map_index][5],
                                 self._db_map[self._db_map_index][6],
+                                self._db_map[self._db_map_index][7],
                             )
                             + S.RESET_ALL
                         )
@@ -135,7 +139,10 @@ class CNDatabase:
             if user[0] == str(userid):
                 HAS_CHANGED = True
                 if isXP:
-                    user[2] = int(user[2]) + amount
+                    if sub:
+                        user[2] = int(user[2]) - amount
+                    else:
+                        user[2] = int(user[2]) + amount
                     return int(user[2])
                 else:
                     if isBet:
@@ -246,3 +253,25 @@ class CNDatabase:
         for user in self._db_map:
             ids.append(user[0])
         return ids
+
+    def update_user_thefts(
+        self, userid, reset: bool = False, fetch: bool = False
+    ) -> int:
+        user = []
+        index = 0
+        for u in self._db_map:
+            if u[0] == str(userid):
+                user = u
+                break
+            index += 1
+        if fetch:
+            return int(user[7])
+        if reset:
+            user[7] = "0"
+            self._db_map[index] = user
+            return 0
+        else:
+            tmp = int(user[7])
+            user[7] = str(tmp + 1)
+            self._db_map[index] = user
+            return tmp + 1
