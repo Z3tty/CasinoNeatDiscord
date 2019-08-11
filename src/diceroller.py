@@ -259,6 +259,16 @@ async def help(ctx):
         inline=False,
     )
     msg.add_field(
+        name="?steal <target>",
+        value="10\% chance to steal 10-20\% of the targets money.\nAlias=[s, rob, thieve]",
+        inline=False,
+    )
+    msg.add_field(
+        name="?bribe",
+        value="Pay the court a bribe to remove your reputation and reset the theft counter",
+        inline=False,
+    )
+    msg.add_field(
         name="?bal",
         value="Shows you how much money you have.\nAlias=[balance, eco, money]",
         inline=False,
@@ -894,6 +904,101 @@ async def update(ctx, user: discord.User, amount: int):
         await ctx.send(embed=e)
 
 
+@bot.command(aliases=["s", "rob", "thieve"])
+async def steal(ctx, target: discord.User):
+    """
+    Steal:
+            Take 10-20% of a targets money with a 10% chance of success and a fine on failure
+    Requires:
+            A target to steal from
+    """
+    global DATABASE
+    global FINE_AMOUNT
+
+    author = ctx.message.author
+    theft_successful: bool = False
+    random.seed()
+    r = random.randint(0, 100)
+    if r < 10:
+        theft_successful = True
+    debug_console_log("steal", author, "Success: {}".format(theft_successful))
+    if theft_successful:
+        target_money: int = DATABASE.update_db(target.id, 0, False, False)
+        stolen_amount: int = int(target_money * (random.randint(10, 20) / 100))
+        tmp = DATABASE.update_db(target.id, stolen_amount, True, False)
+        tmp = DATABASE.update_db(author.id, stolen_amount, False, False)
+        e = compose_embed(
+            0x00FF00,
+            "{} successfully stole ¤{} from {}!".format(
+                author.name, stolen_amount, target.name
+            ),
+            "AID: {} - TID: {}".format(author.id,target.id),
+        )
+        await ctx.send(embed=e)
+        return
+    else:
+        failed_thefts: int = DATABASE.update_user_thefts(author.id)
+        if failed_thefts <= 10:
+            fine: int = FINE_AMOUNT * failed_thefts
+            tmp = DATABASE.update_db(author.id, fine, True, False)
+            if tmp < 0:
+                tmp = DATABASE.update_db(author.id, -tmp, False, False)
+            e = compose_embed(
+                0xFF0000,
+                "Stop right there, criminal scum!",
+                "You have paid a fine of ¤{}".format(fine),
+            )
+            await ctx.send(embed=e)
+            return
+        else:
+            author_money: int = DATABASE.update_db(author.id, 0, False, False)
+            author_xp: int = DATABASE.update_db(author.id, 0, False, False, True)
+            tmp = DATABASE.update_db(author.id, int(author_money * 0.9), True, False)
+            tmp = DATABASE.update_db(author.id, author_xp, True, False, True)
+            e = compose_embed(
+                0xFF0000,
+                "Stop right there, criminal scum!",
+                "You were thrown in jail, losing all your xp and 90\% of your money!",
+            )
+            tmp = DATABASE.update_user_thefts(author.id, True)
+            await ctx.send(embed=e)
+            return
+
+
+@bot.command()
+async def bribe(ctx):
+    """
+    Bribe:
+            Pay off the court to avoid a prison sentence after 10 thefts
+    Requires:
+            Enough money to bribe them
+    """
+    global DATABASE
+    global BRIBE_PRICE
+
+    author = ctx.message.author
+    author_money: int = DATABASE.update_db(author.id, 0, False, False)
+    price: int = DATABASE.update_user_thefts(author.id, False, True) * BRIBE_PRICE
+    if author_money < price:
+        e = compose_embed(
+            0xFFFF00,
+            "You need ¤{} to bribe but you only have ¤{}",
+            "Better hit the casino!",
+        )
+        await ctx.send(embed=e)
+        return
+    else:
+        tmp = DATABASE.update_db(author.id, price, True, False)
+        thefts = DATABASE.update_user_thefts(author.id, True)
+        e = compose_embed(
+            0x00FF00,
+            "You paid a bribe of ¤{} and are now no longer a know thief".format(price),
+            "Thieves guild would be so proud",
+        )
+        await ctx.send(embed=e)
+        return
+
+
 @bot.command(aliases=["give"])
 async def pay(ctx, user: discord.User, amount: int):
     """
@@ -916,7 +1021,7 @@ async def pay(ctx, user: discord.User, amount: int):
         return
     if amount < 0:
         e = compose_embed(
-            0xFF0000, "Theft is illegal", "The authorities have been alerted."
+            0xFF0000, "You cant give debt.", "The authorities have been alerted."
         )
         await ctx.send(embed=e)
         print("=================================================")
