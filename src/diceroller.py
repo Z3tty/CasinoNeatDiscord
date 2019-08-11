@@ -916,6 +916,14 @@ async def steal(ctx, target: discord.User):
     global FINE_AMOUNT
 
     author = ctx.message.author
+    if author.id == target.id:
+        e = compose_embed(0xFF0000, "You cant steal from yourself", "Unless you're mentally ill in which case I apologize")
+        await ctx.send(embed=e)
+        return
+    if target.bot:
+        e = compose_embed(0xFF0000, "Bots dont have money", "They're equally offended at your attempt however")
+        await ctx.send(embed=e)
+        return
     theft_successful: bool = False
     random.seed()
     r = random.randint(0, 100)
