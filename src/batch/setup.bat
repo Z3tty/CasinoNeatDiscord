@@ -5,6 +5,7 @@ set /p token=Please enter your bot token:
 echo Setting up directories ...
 mkdir enc
 mkdir DB
+mkdir rpgdata
 echo Done!
 echo Creating token file ...
 cd enc
@@ -16,3 +17,10 @@ cd DB
 type NUL > database.cndb
 cd ..
 echo Done!
+echo Creating RPG data file ...
+cd rpgdata
+type NUL > characterdata.cncrypt
+cd ..
+echo Done!
+echo Now just use the run file and enjoy the bot!
+pause
