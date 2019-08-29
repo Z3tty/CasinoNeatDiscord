@@ -68,9 +68,9 @@ class CNDatabase:
 
     def push(self) -> None:
         global DB
-        global HAS_CHANGED
+        global HAS_CHANGED_DB
 
-        if self._db_map_index != 0 and HAS_CHANGED:
+        if self._db_map_index != 0 and HAS_CHANGED_DB:
             with open(DB, "w") as clear:
                 clear.write("")
             self._db_map_index = 0
@@ -116,16 +116,37 @@ class CNDatabase:
                         print(
                             "CNDB::Push->End of file encountered when writing data to disk"
                         )
-                HAS_CHANGED = False
+                HAS_CHANGED_DB = False
 
     # Registers a user to the bot DB
     def register(self, user: discord.User):
+        global DB
+
         userid: str = str(user.id)
         for user in self._db_map:
             if user[0] == userid:
                 return None
-        new_user: list = [userid, "1000", "0", "-1", "0", "0", "0"]
+        new_user: list = [userid, "1000", "0", "-1", "0", "0", "0", "0"]
         self._db_map.append(new_user)
+        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
+                            self._db_map[self._db_map_index][0],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][1],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][2],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][3],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][4],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][5],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][6],
+                            self._db_separator,
+                            self._db_map[self._db_map_index][7],
+        )
+        with open(DB, "a") as db:
+            db.write(line)
         self._db_map_index += 1
         return -1
 
@@ -133,11 +154,13 @@ class CNDatabase:
     def update_db(
         self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False
     ) -> int:
-        global HAS_CHANGED
+        global HAS_CHANGED_DB
+        global HAS_CHANGED_RPG
 
         for user in self._db_map:
             if user[0] == str(userid):
-                HAS_CHANGED = True
+                HAS_CHANGED_DB = True
+                HAS_CHANGED_RPG = True
                 if isXP:
                     if sub:
                         user[2] = int(user[2]) - amount
