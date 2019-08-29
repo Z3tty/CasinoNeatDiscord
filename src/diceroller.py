@@ -34,7 +34,7 @@ import cndb
 import RPG
 
 RPGCTRL = RPG.RPGController()
-
+RPGCTRL.pull()
 DATABASE = cndb.CNDatabase()
 DATABASE.pull()
 
