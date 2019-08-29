@@ -155,12 +155,10 @@ class CNDatabase:
         self, userid, amount: int, sub: bool, isBet: bool = True, isXP: bool = False
     ) -> int:
         global HAS_CHANGED_DB
-        global HAS_CHANGED_RPG
 
         for user in self._db_map:
             if user[0] == str(userid):
                 HAS_CHANGED_DB = True
-                HAS_CHANGED_RPG = True
                 if isXP:
                     if sub:
                         user[2] = int(user[2]) - amount
