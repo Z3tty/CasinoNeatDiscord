@@ -31,6 +31,9 @@ import random
 import logging
 from cn_globals import *
 import cndb
+import RPG
+
+RPGCTRL = RPG.RPGController()
 
 DATABASE = cndb.CNDatabase()
 DATABASE.pull()
@@ -73,10 +76,12 @@ async def on_command_error(ctx, error):
 
 async def push_database_task():
     global DATABASE
+    global RPGCTRL
     global DB_PUSH_TIMEOUT
 
     while True:
         DATABASE.push()
+        RPGCTRL.push()
         await asyncio.sleep(DB_PUSH_TIMEOUT)
 
 
@@ -1368,6 +1373,124 @@ async def compliment(ctx, *args):
     msg: str = (preambles[pidx] + name + finishers[fidx])
     e = compose_embed(0xFF00FF, msg, "ID: {}".format(author.id))
     await ctx.send(embed=e)
+
+
+@bot.command(aliases=["newchar", "nc"])
+async def newcharacter(ctx, name: str = "", archetype: int = -1):
+    global RPGCTRL
+
+    if name == "" or archetype == -1 or archetype > 4:
+        e = compose_embed(
+            0xFF0000,
+            "You must choose a class and name to make a character! (?newcharacter <name> <class>)",
+            "Please use the number next to a class to select it",
+        )
+        rpghelp: discord.Embed = discord.Embed(
+            title="CN RPG", description="Possible classes:", color=0xFF00FF
+        )
+        rpghelp.add_field(
+            name="0 | Mage", value="High damage, low defense", inline=False
+        )
+        rpghelp.add_field(
+            name="1 | Warrior", value="Middle damage, high defense", inline=False
+        )
+        rpghelp.add_field(
+            name="2 | Ranger", value="High damage, middle defense", inline=False
+        )
+        rpghelp.add_field(
+            name="3 | Rogue", value="High damage, low defense, high crit", inline=False
+        )
+        rpghelp.add_field(
+            name="4 | Priest",
+            value="Low damage, high defense, gets healing",
+            inline=False,
+        )
+        await ctx.send(embed=e)
+        await ctx.send(embed=rpghelp)
+        return
+    else:
+        register_success = RPGCTRL.NewCharacter(ctx.message.author, name, archetype)
+        if register_success == None:
+            e = compose_embed(
+                0xFF0000,
+                "Error registering character",
+                "Please try again later | Contact an administrator",
+            )
+            await ctx.send(embed=e)
+            return
+        else:
+            e = compose_embed(
+                0x00FF00,
+                "Congratulations!",
+                "You have been given a set of starting gear as a welcome gift!",
+            )
+            await ctx.send(embed=e)
+            return
+
+
+@bot.command()
+async def profile(ctx):
+    global RPGCTRL
+
+    i = 0
+    character = None
+    for i in range(RPGCTRL.cptr):
+        if str(RPGCTRL.characters[i].owner) == str(ctx.message.author.id):
+            character = RPGCTRL.characters[i]
+            break
+    if character == None:
+        e = compose_embed(
+            0xFF0000,
+            "You must have a character to check your profile",
+            "Try doing ?nc!",
+        )
+        await ctx.send(embed=e)
+        return
+    archetype = ""
+    if character.archetype == 0:
+        archetype = "Mage"
+    if character.archetype == 1:
+        archetype = "Warrior"
+    if character.archetype == 2:
+        archetype = "Ranger"
+    if character.archetype == 3:
+        archetype = "Rogue"
+    if character.archetype == 4:
+        archetype = "Priest"
+    prof: discord.Embed = discord.Embed(
+        title="{}, Level {} {}".format(character.name, character.level, archetype),
+        description="XP: {}, Left to next level: {}".format(
+            character.xp, RPG.RPG_Level_Requirements[character.level + 1] - character.xp
+        ),
+        color=0xFFFFFF,
+    )
+    prof.add_field(
+        name="Stats",
+        value="ATK: {}\nDEF: {}\nHP: {}\nCRIT: {}".format(
+            character.stats["ATK"],
+            character.stats["DEF"],
+            character.stats["HP"],
+            character.stats["CRIT"],
+        ),
+        inline=False,
+    )
+    prof.add_field(
+        name="Main Hand: {}".format(character.equipment["MH"].item_name),
+        value="{}".format(character.equipment["MH"].item_description),
+        inline=False,
+    )
+    prof.add_field(
+        name="Off Hand: {}".format(character.equipment["OH"].item_name),
+        value="{}".format(character.equipment["OH"].item_description),
+        inline=False,
+    )
+    prof.add_field(
+        name="Armor: {}".format(character.equipment["ARM"].item_name),
+        value="{}".format(character.equipment["ARM"].item_description),
+        inline=False,
+    )
+    await ctx.send(embed=prof)
+    return
 
 
 bot.run(TOKEN)
