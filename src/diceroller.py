@@ -83,6 +83,7 @@ async def push_database_task():
 @bot.event
 async def on_ready():
     global AUTHOR
+    global VERSION
 
     bot.loop.create_task(push_database_task())
     # Forge a header with bot info
@@ -103,7 +104,7 @@ async def on_ready():
         + F.BLUE
         + "--------------------------------------------------------------------------------"
     )
-    print("Bot connected\t\t{} [V:1.0]\t\t\t\t".format(date_time))
+    print("Bot connected\t\t{} [V:{}]\t\t\t\t".format(date_time, VERSION))
     print(
         "ID:\t\t\t{}\t\t\t\t\t\nName:\t\t\t{}\t\t\t\t\t\nOwner:\t\t\t{}\t\t\t\t\t\t\nAuthor:\t\t\t{}\t\t\t\t".format(
             bot.appinfo.id, bot.appinfo.name, bot.appinfo.owner, AUTHOR
@@ -205,18 +206,10 @@ async def on_message(message):
         print(
             S.BRIGHT
             + F.CYAN
-            + "[@{}/USER]\t(#{})\t({}) {}: {}".format(
-                guild.name, channel.name, author.id, author.name, content
-            )
+            + "[@/USER]\t({}) {}: {}".format(author.id, author.name, content)
         )
     if author.bot and not FILTER_BOTS:
-        print(
-            S.BRIGHT
-            + F.MAGENTA
-            + "[@{}/BOT]\t(#{})\t{}: {}".format(
-                guild.name, channel.name, author.name, content
-            )
-        )
+        print(S.BRIGHT + F.MAGENTA + "[@/BOT]\t{}: {}".format(author.name, content))
     # Make sure commands work
     await bot.process_commands(message)
 
@@ -240,87 +233,88 @@ async def help(ctx):
 			Nothing
 	"""
     debug_console_log("help", ctx.message.author)
-    msg = discord.Embed(title="CN Diceroller", description="", color=0xFF00FF)
-    msg.add_field(
+    if ctx.message.author.dm_channel == None:
+        await ctx.message.author.create_dm()
+        channel = ctx.message.author.dm_channel
+        print(channel)
+    helpmsg = discord.Embed(title="CN Diceroller", description="", color=0xFF00FF)
+    helpmsg.add_field(
         name="?help",
         value="Displays this message.\nAlias=[h, info, commands, c]",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?roll <dice><sides>[mod]",
         value="Rolls some variable-sided dice and prints the result.\nAlias=[r]",
         inline=False,
     )
-    msg.add_field(name="?rigg", value="Nice try", inline=False)
-    msg.add_field(name="?rigged", value="How dare you!", inline=False)
-    msg.add_field(
+    helpmsg.add_field(name="?rigg", value="Nice try", inline=False)
+    helpmsg.add_field(name="?rigged", value="How dare you!", inline=False)
+    helpmsg.add_field(
         name="?gamble <bet>",
         value="Dicegame, betting ¤<bet> against a 100-sided roll, over 55 is a win.\nAlias=[55x2, g, bet]",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?steal <target>",
-        value="10\% chance to steal 10-20\% of the targets money.\nAlias=[s, rob, thieve]",
+        value="3\% chance to steal 10-20\% of the targets money.\nAlias=[s, rob, thieve]",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?bribe",
         value="Pay the court a bribe to remove your reputation and reset the theft counter",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
+        name="?slots <amount>", value="Bet an amount on a slot machine!", inline=False
+    )
+    helpmsg.add_field(
+        name="?lottery",
+        value="Play the lottery! Insanely low chance at a lot of money!\nAlias=[lotto, l]",
+        inline=False,
+    )
+    helpmsg.add_field(
         name="?bal",
         value="Shows you how much money you have.\nAlias=[balance, eco, money]",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?daily", value="Claim a daily cash bonus.\nAlias=[d]", inline=False
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?order <drink>",
         value="Buy a drink! userexperiencenotguaranteed",
         inline=False,
     )
-    msg.add_field(name="?cookie <user>", value="Give someone a cookie!", inline=False)
-    msg.add_field(
+    helpmsg.add_field(
+        name="?cookie <user>", value="Give someone a cookie!", inline=False
+    )
+    helpmsg.add_field(
         name="?pay <user> <amount>",
         value="Send someone your hard-earned money.\nAlias=[give]",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?insult <name>", value="Generate an insult aimed at someone", inline=False
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?compliment <name>",
         value="Generate a compliment aimed at someone",
         inline=False,
     )
-    msg.add_field(
+    helpmsg.add_field(
         name="?level <user:optional>",
         value="Show someone's level and xp count",
         inline=False,
     )
-    msg.add_field(name="?adminhelp", value="Show admin-only commands", inline=False)
-    await ctx.send(embed=msg)
-
-
-@bot.command()
-async def adminhelp(ctx):
-    """
-	adminhelp: 	
-			displays a help message for administrators
-	Requires:
-			Nothing
-	"""
-    debug_console_log("adminhelp", ctx.message.author)
-    msg = discord.Embed(title="CN Adminpanel", description="", color=0xFF0000)
-    msg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
-    msg.add_field(
+    adminmsg = discord.Embed(title="CN Admin commands", description="", color=0xFF0000)
+    adminmsg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
+    adminmsg.add_field(
         name="?update <@user> <amount>",
         value="(ADMIN) Give a user the provided amount",
         inline=False,
     )
-    msg.add_field(
+    adminmsg.add_field(
         name="?filter <value>", value="(ADMIN) Filters console output.", inline=False
     )
     filters = discord.Embed(
@@ -333,8 +327,11 @@ async def adminhelp(ctx):
     filters.add_field(name="debug", value="Toggles debug messages on/off", inline=False)
     filters.add_field(name="all", value="Toggles all messages on", inline=False)
     filters.add_field(name="none", value="Toggles all messages off", inline=False)
-    await ctx.send(embed=msg)
-    await ctx.send(embed=filters)
+    await channel.send(embed=helpmsg)
+    await channel.send(embed=adminmsg)
+    await channel.send(embed=filters)
+    emoji = "\N{THUMBS UP SIGN}"
+    await ctx.message.add_reaction(emoji)
 
 
 @bot.command()
@@ -410,6 +407,73 @@ async def cookie(ctx, target: discord.User):
             ":cookie: sent: {}, :cookie: recieved: {}".format(info[0], info[1]),
         )
     await ctx.send(embed=e)
+
+
+@bot.command()
+async def slots(ctx, amount: int):
+    global DATABASE
+    global RIGGED
+
+    author = ctx.message.author
+    update_success: int = DATABASE.update_db(author.id, amount, True, True)
+    if update_success == -1:
+        e = compose_embed(
+            0xFF0000, "You cant afford this bet", "We dont take monopoly money"
+        )
+        await ctx.send(embed=e)
+        return
+    debug_console_log("slots", author, "Amount: {}".format(amount))
+    equivalents: dict = {
+        0: ":cherries:",
+        1: ":banana:",
+        2: ":watermelon:",
+        3: ":grapes:",
+        4: ":tangerine:",
+        5: ":lemon:",
+    }
+    # Rerolling on higher values to make it harder to win
+    slot_0: int = random.randint(0, 5)
+    if slot_0 > 3:
+        slot_0 = random.randint(0, 5)
+    slot_1: int = random.randint(0, 5)
+    if slot_1 > 3:
+        slot_1 = random.randint(0, 5)
+    slot_2: int = random.randint(0, 5)
+    if slot_2 > 3:
+        slot_2 = random.randint(0, 5)
+    payout_multiplier: int = 0
+    if RIGGED:
+        slot_0 = 5
+        slot_1 = 5
+        slot_2 = 5
+        RIGGED = False
+    if slot_0 == slot_1:
+        if slot_0 == slot_2:
+            payout_multiplier = slot_0 + slot_1 + slot_2
+        else:
+            payout_multiplier = slot_0 + slot_1
+    elif slot_1 == slot_2:
+        payout_multiplier = slot_1 + slot_2
+    winnings: int = amount * payout_multiplier
+    won: bool = winnings != 0
+    e = compose_embed(
+        0xFF00FF,
+        "Slotmachine",
+        "{} - {} - {}, you {} ¤{}!".format(
+            equivalents[slot_0],
+            equivalents[slot_1],
+            equivalents[slot_2],
+            "won" if won else "lost",
+            winnings if won else amount,
+        ),
+    )
+    await ctx.send(embed=e)
+    if won:
+        update_success = DATABASE.update_db(author.id, winnings, False)
+        if update_success == -1:
+            await ctx.send(
+                "```diff\n-Error updating user! Please contact an administrator!\n```"
+            )
 
 
 @bot.command()
@@ -805,7 +869,7 @@ async def gamble(ctx, bet: int = 0):
 
 # Show a user their balance
 @bot.command(aliases=["money", "balance", "eco"])
-async def bal(ctx):
+async def bal(ctx, user: discord.User = None):
     """
 	Bal: 	
 			responds with the users balance.
@@ -815,11 +879,60 @@ async def bal(ctx):
     global DATABASE
 
     author = ctx.message.author
-    balance = DATABASE.update_db(author.id, 0, False, False)
+    target_name = ""
+    balance = 0
+    if user == None:
+        balance = DATABASE.update_db(author.id, 0, False, False)
+        target_name = author.name
+    else:
+        balance = DATABASE.update_db(user.id, 0, False, False)
+        if balance == -1:
+            DATABASE.register(user)
+            balance = 1000
+        target_name = user.name
     e = compose_embed(
-        0x00FF00, "{} has ¤{}".format(author.name, balance), "ID: {}".format(author.id)
+        0x00FF00, "{} has ¤{}".format(target_name, balance), "ID: {}".format(author.id)
     )
     await ctx.send(embed=e)
+
+
+@bot.command(aliases=["lotto", "l"])
+async def lottery(ctx):
+    global DATABASE
+    global LOTTO_REWARD
+
+    random.seed()
+    win = random.randint(0, 1000)
+    random.seed()
+    rnd = random.randint(0, 1000)
+    author = ctx.message.author
+    author_cash = DATABASE.update_db(author.id, 0, False, False, False)
+    if author_cash > 100:
+        DATABASE.update_db(author.id, 100, True, True)
+    else:
+        e = compose_embed(0xFF0000, "You cant afford a ticket!", "They cost ¤100")
+        await ctx.send(embed=e)
+        return
+    debug_console_log(
+        "lottery", author, "Winning number: {} - Drawn number: {}".format(win, rnd)
+    )
+    if win == rnd:
+        DATABASE.update_db(author.id, LOTTO_REWARD, False, False, False)
+        e = compose_embed(
+            0x00FF00,
+            "Congratulations! You won ¤{} with insane luck!",
+            "Seriously, thats insane",
+        )
+        await ctx.send(embed=e)
+        return
+    else:
+        e = compose_embed(
+            0xFF0000,
+            "Better luck next time!",
+            "Dont be discouraged, the chance is insanely low",
+        )
+        await ctx.send(embed=e)
+        return
 
 
 # Get some debug info in the console
@@ -908,7 +1021,7 @@ async def update(ctx, user: discord.User, amount: int):
 async def steal(ctx, target: discord.User):
     """
     Steal:
-            Take 10-20% of a targets money with a 10% chance of success and a fine on failure
+            Take 10-20% of a targets money with a 3% chance of success and a fine on failure
     Requires:
             A target to steal from
     """
@@ -917,17 +1030,35 @@ async def steal(ctx, target: discord.User):
 
     author = ctx.message.author
     if author.id == target.id:
-        e = compose_embed(0xFF0000, "You cant steal from yourself", "Unless you're mentally ill in which case I apologize")
+        e = compose_embed(
+            0xFF0000,
+            "You cant steal from yourself",
+            "Unless you're mentally ill in which case I apologize",
+        )
         await ctx.send(embed=e)
         return
     if target.bot:
-        e = compose_embed(0xFF0000, "Bots dont have money", "They're equally offended at your attempt however")
+        e = compose_embed(
+            0xFF0000,
+            "Bots dont have money",
+            "They're equally offended at your attempt however",
+        )
         await ctx.send(embed=e)
         return
     theft_successful: bool = False
+    theft_limit: bool = False
+    tmp = DATABASE.update_user_thefts(author.id, False, True)
+    if tmp > 10:
+        e = compose_embed(
+            0xFF0000,
+            "You must bribe to be able to steal again",
+            "Wouldnt want you to abuse this, hm?",
+        )
+        await ctx.send(embed=e)
+        return
     random.seed()
     r = random.randint(0, 100)
-    if r < 10:
+    if r < 3:
         theft_successful = True
     debug_console_log("steal", author, "Success: {}".format(theft_successful))
     if theft_successful:
@@ -940,7 +1071,7 @@ async def steal(ctx, target: discord.User):
             "{} successfully stole ¤{} from {}!".format(
                 author.name, stolen_amount, target.name
             ),
-            "AID: {} - TID: {}".format(author.id,target.id),
+            "AID: {} - TID: {}".format(author.id, target.id),
         )
         await ctx.send(embed=e)
         return
@@ -948,9 +1079,21 @@ async def steal(ctx, target: discord.User):
         failed_thefts: int = DATABASE.update_user_thefts(author.id)
         if failed_thefts <= 10:
             fine: int = FINE_AMOUNT * failed_thefts
+            author_money: int = DATABASE.update_db(author.id, 0, False, False)
+            if fine > author_money:
+                DATABASE.update_db(author.id, author_money, True, False)
+                while failed_thefts <= 10:
+                    failed_thefts = DATABASE.update_user_thefts(author.id)
+                e = compose_embed(
+                    0xFF0000,
+                    "Stop right there, criminal scum!",
+                    "You couldn't affort the fine and were thrown in prison.",
+                )
+                await ctx.send(embed=e)
+                return
             tmp = DATABASE.update_db(author.id, fine, True, False)
             if tmp < 0:
-                tmp = DATABASE.update_db(author.id, -tmp, False, False)
+                tmp = DATABASE.update_db(author.id, tmp, True, False)
             e = compose_embed(
                 0xFF0000,
                 "Stop right there, criminal scum!",
@@ -968,7 +1111,6 @@ async def steal(ctx, target: discord.User):
                 "Stop right there, criminal scum!",
                 "You were thrown in jail, losing all your xp and 90\% of your money!",
             )
-            tmp = DATABASE.update_user_thefts(author.id, True)
             await ctx.send(embed=e)
             return
 
@@ -990,7 +1132,7 @@ async def bribe(ctx):
     if author_money < price:
         e = compose_embed(
             0xFFFF00,
-            "You need ¤{} to bribe but you only have ¤{}",
+            "You need ¤{} to bribe but you only have ¤{}".format(price, author_money),
             "Better hit the casino!",
         )
         await ctx.send(embed=e)
@@ -1001,7 +1143,7 @@ async def bribe(ctx):
         e = compose_embed(
             0x00FF00,
             "You paid a bribe of ¤{} and are now no longer a know thief".format(price),
-            "Thieves guild would be so proud",
+            "The Thieves guild would be so proud",
         )
         await ctx.send(embed=e)
         return
