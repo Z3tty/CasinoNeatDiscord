@@ -469,7 +469,7 @@ async def slots(ctx, amount: int):
     )
     await ctx.send(embed=e)
     if won:
-        update_success = DATABASE.update_db(author.id, winnings, False)
+        update_success = DATABASE.update_db(author.id, winnings, False, False)
         if update_success == -1:
             await ctx.send(
                 "```diff\n-Error updating user! Please contact an administrator!\n```"
