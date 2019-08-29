@@ -91,7 +91,7 @@ class RPGItem:
             self.suffix_stat_boosts["HP"]
         ) + "|" + str(
             self.suffix_stat_boosts["CRIT"]
-        ) + "|" + self.item_description
+        )
         return istr
 
 
@@ -275,7 +275,7 @@ class RPGItemCreator:
     ) -> RPGItem:
         item = RPGItem()
         item.item_stats = stats
-        item.slot = slot
+        item.item_slot = slot
         item.item_name = prefix + " " + name + " " + suffix
         item.prefix = prefix
         item.suffix = suffix
@@ -317,6 +317,20 @@ class RPGItemCreator:
             item.suffix_stat_boosts["DEF"] = int(split[13])
             item.suffix_stat_boosts["HP"] = int(split[14])
             item.suffix_stat_boosts["CRIT"] = int(split[15])
+            item.item_description = "ATK: {} +{} +{}\t\t\tDEF: {} +{} +{}\nHP: {} +{} +{}\t\t\tCRIT: {} +{} +{}".format(
+                item.item_stats["ATK"],
+                item.prefix_stat_boosts["ATK"],
+                item.suffix_stat_boosts["ATK"],
+                item.item_stats["DEF"],
+                item.prefix_stat_boosts["DEF"],
+                item.suffix_stat_boosts["DEF"],
+                item.item_stats["HP"],
+                item.prefix_stat_boosts["HP"],
+                item.suffix_stat_boosts["HP"],
+                item.item_stats["CRIT"],
+                item.prefix_stat_boosts["CRIT"],
+                item.suffix_stat_boosts["CRIT"],
+            )
             return item
         return None
 
@@ -480,30 +494,14 @@ class RPGController:
                         ARM = self.ItemCreator.create_from_string(split[14])
                         char.inventory = split[15].split(",")
                         char.equipment = {"MH": MH, "OH": OH, "ARM": ARM}
-                        self.characters.append(usr)
+                        self.characters.append(char)
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB::Pull->Read Character->\{Owner:{}|Name:{}|Level:{}|XP:{}|Class:{}|Path:{}|Spec:{}|Mastery:{}|ATK:{}|DEF:{}|HP:{}|CRIT:{}|MH:{}|OH:{}:ARM:{}|Inv:{} items\}".format(
-                                char.owner,
-                                char.name,
-                                char.level,
-                                char.xp,
-                                char.archetype,
-                                char.path,
-                                char.specialization,
-                                char.mastery,
-                                char.stats["ATK"],
-                                char.stats["DEF"],
-                                char.stats["HP"],
-                                char.stats["HP"],
-                                MH.item_name,
-                                OH.item_name,
-                                ARM.item_name,
-                                len(char.inventory),
-                            )
+                            + "CNDB::Pull->Read Character owned by ({})".format(char.owner)
                             + S.RESET_ALL
                         )
+                               
                         self.cptr += 1
                 except StopIteration:
                     print(
@@ -512,73 +510,70 @@ class RPGController:
 
     def push(self) -> None:
         global RPGDATA
-        global HAS_CHANGED_RPG
 
-        if self.cptr != 0 and HAS_CHANGED_RPG:
-            with open(RPGDATA, "w") as clear:
-                clear.write("")
-            self.cptr = 0
-            line: str = "0000000000000000"
-            with open(RPGDATA, "a") as db:
-                while line != "" and self.cptr < len(self.characters):
-                    try:
-                        char = self.characters[self.cptr]
-                        MH: RPGItem = char.equipment[0]
-                        OH: RPGItem = char.equipment[1]
-                        ARM: RPGItem = char.equipment[2]
-                        if MH == None or OH == None or ARM == None:
-                            print("Empty equipment")
-                        if char == None:
-                            print("Empty RPG character")
-                        else:
-                            line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
-                                char.owner,
-                                self.chr_separator,
-                                char.name,
-                                self.chr_separator,
-                                char.level,
-                                self.chr_separator,
-                                char.xp,
-                                self.chr_separator,
-                                char.archetype,
-                                self.chr_separator,
-                                char.path,
-                                self.chr_separator,
-                                char.specialization,
-                                self.chr_separator,
-                                char.mastery,
-                                self.chr_separator,
-                                char.stats["ATK"],
-                                self.chr_separator,
-                                char.stats["DEF"],
-                                self.chr_separator,
-                                char.stats["HP"],
-                                self.chr_separator,
-                                char.stats["CRIT"],
-                                self.chr_separator,
-                                MH.stringify(),
-                                self.chr_separator,
-                                OH.stringify(),
-                                self.chr_separator,
-                                ARM.stringify(),
-                                self.chr_separator,
-                                str(char.inventory),
-                            )
-                            db.write(line)
-                            print(
-                                B.BLUE
-                                + F.WHITE
-                                + "CNDB::Push->Wrote Character registered to ({})".format(
-                                    self.characters[self.cptr].owner
-                                )
-                                + S.RESET_ALL
-                            )
-                        self.cptr += 1
-                    except StopIteration:
-                        print(
-                            "CNDB::Push->End of file encountered when writing data to disk"
+        with open(RPGDATA, "w") as clear:
+            clear.write("")
+        self.cptr = 0
+        line: str = "0000000000000000"
+        with open(RPGDATA, "a") as db:
+            while line != "" and self.cptr < len(self.characters):
+                try:
+                    char = self.characters[self.cptr]
+                    MH: RPGItem = char.equipment["MH"]
+                    OH: RPGItem = char.equipment["OH"]
+                    ARM: RPGItem = char.equipment["ARM"]
+                    if MH == None or OH == None or ARM == None:
+                        print("Empty equipment")
+                    if char == None:
+                        print("Empty RPG character")
+                    else:
+                        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
+                            char.owner,
+                            self.chr_separator,
+                            char.name,
+                            self.chr_separator,
+                            char.level,
+                            self.chr_separator,
+                            char.xp,
+                            self.chr_separator,
+                            char.archetype,
+                            self.chr_separator,
+                            char.path,
+                            self.chr_separator,
+                            char.specialization,
+                            self.chr_separator,
+                            char.mastery,
+                            self.chr_separator,
+                            char.stats["ATK"],
+                            self.chr_separator,
+                            char.stats["DEF"],
+                            self.chr_separator,
+                            char.stats["HP"],
+                            self.chr_separator,
+                            char.stats["CRIT"],
+                            self.chr_separator,
+                            MH.stringify(),
+                            self.chr_separator,
+                            OH.stringify(),
+                            self.chr_separator,
+                            ARM.stringify(),
+                            self.chr_separator,
+                            str(char.inventory),
                         )
-            HAS_CHANGED_RPG = False
+                        db.write(line)
+                        print(
+                            B.BLUE
+                            + F.WHITE
+                            + "CNDB::Push->Wrote Character registered to ({})".format(
+                                self.characters[self.cptr].owner
+                            )
+                            + S.RESET_ALL
+                        )
+                    self.cptr += 1
+                except StopIteration:
+                    print(
+                        "CNDB::Push->End of file encountered when writing data to disk"
+                    )
 
     def NewCharacter(self, owner: discord.User, name, archetype):
         userid: str = str(owner.id)
