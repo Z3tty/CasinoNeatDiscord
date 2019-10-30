@@ -33,8 +33,8 @@ from cn_globals import *
 import cndb
 import RPG
 
-RPGCTRL = RPG.RPGController()
-RPGCTRL.pull()
+# RPGCTRL = RPG.RPGController()
+# RPGCTRL.pull()
 DATABASE = cndb.CNDatabase()
 DATABASE.pull()
 
@@ -76,12 +76,12 @@ async def on_command_error(ctx, error):
 
 async def push_database_task():
     global DATABASE
-    global RPGCTRL
+    # global RPGCTRL
     global DB_PUSH_TIMEOUT
 
     while True:
         DATABASE.push()
-        RPGCTRL.push()
+        # RPGCTRL.push()
         await asyncio.sleep(DB_PUSH_TIMEOUT)
 
 
@@ -133,6 +133,7 @@ async def on_message(message):
     global CRATE_GIVES_XP
     global CRATE_REWARD_AMOUNT
     global DATABASE
+    global SILENT
     # Necessary variables for logging, events, etc.
     # Also cleaning of message contents for a better reading experience
     rnd = random.randint(0, 5000)
@@ -148,20 +149,22 @@ async def on_message(message):
     if not author.bot:
         msg = DATABASE.register(author)
         if msg != None:
-            await message.channel.send(
-                "```User {} has been registered!```".format(author.name)
-            )
+            if not SILENT:
+                await message.channel.send(
+                    "```User {} has been registered!```".format(author.name)
+                )
         xp = random.randint(10, 25)
         debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
         xp_return: int = DATABASE.update_db(
             author.id, xp, False, False, True
         )  # -1 if not registered
         if xp_return == -1:
-            await message.channel.send(
-                "```User {} has been registered!```".format(author.name)
-            )
+            if not SILENT:
+                await message.channel.send(
+                    "```User {} has been registered!```".format(author.name)
+                )
     # Random cash events
-    if rnd < 100 and rnd > 10 and not RANDOM_EVENT_CURRENTLY:
+    if rnd < 100 and rnd > 10 and not RANDOM_EVENT_CURRENTLY and not SILENT:
         RANDOM_EVENT_CURRENTLY = True
         RANDOM_EVENT_AMOUNT = random.randint(100, 10000)
         print(
@@ -175,7 +178,7 @@ async def on_message(message):
             )
         )
     # Random crate event
-    elif rnd < 10 and not RANDOM_EVENT_CURRENTLY:
+    elif rnd < 10 and not RANDOM_EVENT_CURRENTLY and not SILENT:
         RANDOM_EVENT_CURRENTLY = True
         coinflip: int = random.randint(0, 100)
         if coinflip < 50:
@@ -312,6 +315,9 @@ async def help(ctx):
         value="Show someone's level and xp count",
         inline=False,
     )
+    helpmsg.add_field(
+        name="?silent", value="Stops the bot from sending random messages", inline=False
+    )
     adminmsg = discord.Embed(title="CN Admin commands", description="", color=0xFF0000)
     adminmsg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
     adminmsg.add_field(
@@ -382,6 +388,14 @@ async def filter(ctx, f: str):
             await ctx.send("```Filters switched! Now showing no messages```")
         else:
             await ctx.send("```Malformed argument - No such filter```")
+
+
+@bot.command()
+async def silent(ctx):
+    global SILENT
+    SILENT = not SILENT
+    await ctx.send("Bot silent mode: {}".format(SILENT))
+    return
 
 
 @bot.command()
@@ -872,6 +886,469 @@ async def gamble(ctx, bet: int = 0):
             return
 
 
+@bot.command()
+async def sarcasm(ctx):
+    """
+    Sarcasm: 
+        Make a message explicitly sarcastic for all of those who dont get jokes
+    Requires:
+        A message to make sarcastic
+    """
+    author = ctx.message.author
+    debug_console_log("sarcasm", author, "")
+    msg: str = ctx.message.content.replace("?sarcasm ", "")
+    retmsg: str = ""
+    for char in msg:
+        retmsg += char.upper() if random.randint(0, 1) == 1 else char.lower()
+    await ctx.send("```{}```".format(retmsg))
+    return
+
+
+@bot.command()
+async def roulette(ctx, bet: str = "", amount: int = 0):
+    """
+    Roulette:
+        A miniature roulette wheel, with some of the bets supported (TODO: Several bets per roll [*bets > bet], support more bet types)
+    Requires:
+        Being registered in the database, and enough money to field the bet
+    """
+    global DATABASE
+
+    author = ctx.message.author
+    # Tell the user what to do if they dont supply any arguments
+    debug_console_log("roulette", author, "Bet: {} | Amount: ¤{}".format(bet, amount))
+    if bet == "" and amount == 0:
+        e = compose_embed(0xFF00FF, "Roulette", "Possible bets:")
+        e.add_field(
+            name="Red",
+            value="Bet on whether the roll is a red number, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Black",
+            value="Bet on whether the roll is a black number, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Even",
+            value="Bet on whether the roll is an even number, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Odd",
+            value="Bet on whether the roll is an odd number, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Low",
+            value="Bet on whether the roll is at or below 18, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="High",
+            value="Bet on whether the roll is at or above 19, x2 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Col1",
+            value="Bet on whether the roll is in column 1, x3 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Col2",
+            value="Bet on whether the roll is in column 2, x3 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Col3",
+            value="Bet on whether the roll is in column 3, x3 win",
+            inline=False,
+        )
+        e.add_field(
+            name="Zero",
+            value="Bet on whether the roll is an exact 0, x50 win",
+            inline=False,
+        )
+        await ctx.send(embed=e)
+        return
+    b: str = bet.lower()  # Make sure that RED reD red, etc, are all handled the same
+    valid_bets: list = [
+        "red",
+        "black",
+        "even",
+        "odd",
+        "low",
+        "high",
+        "col1",
+        "col2",
+        "col3",
+        "zero",
+    ]
+    if b not in valid_bets:  # Ignore invalid bets
+        e = compose_embed(0xFF0000, "Roulette", "Error: No such bet")
+        await ctx.send(embed=e)
+        return
+    if amount <= 0:  # Ignore non-existant bets
+        e = compose_embed(0xFF0000, "Roulette", "Error: Cannot bet nothing")
+        await ctx.send(embed=e)
+        return
+    author_balance: int = DATABASE.update_db(author.id, 0, False)
+    if author_balance == -1:  # Check that the user is properly registered
+        e = compose_embed(0xFF0000, "Roulette", "Error: Could not access database")
+        await ctx.send(embed=e)
+        return
+    if author_balance < amount:  # Check that they have enough money to play
+        e = compose_embed(
+            0xFF0000, "Roulette", "Error: You dont have enough to make a bet that big!"
+        )
+        await ctx.send(embed=e)
+        return
+    tmp = DATABASE.update_db(author.id, amount, True)
+    if (
+        tmp == -1
+    ):  # Make sure that we can subtract the bet from their account, then do so
+        e = compose_embed(0xFF0000, "Roulette", "Error: Could not access database")
+        await ctx.send(embed=e)
+        return
+    # Lists for easy bet-win checks
+    roll = random.randint(0, 36)
+    red_numbers: list = [
+        1,
+        3,
+        5,
+        7,
+        9,
+        12,
+        14,
+        16,
+        18,
+        19,
+        21,
+        23,
+        25,
+        27,
+        30,
+        32,
+        34,
+        36,
+    ]
+    col1: list = [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
+    col2: list = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35]
+    col3: list = [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]
+    winnings: int = 0
+    if b == "red":  # God I miss switch { case: } statements
+        if roll in red_numbers:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :red_circle:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :black_circle:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "black":  # God I miss switch { case: } statements
+        if roll not in red_numbers:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :black_circle:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :red_circle:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "even":  # God I miss switch { case: } statements
+        if roll % 2 == 0:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :performing_arts:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :performing_arts:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "odd":  # God I miss switch { case: } statements
+        if roll % 2 != 0:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :performing_arts:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :performing_arts:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "low":  # God I miss switch { case: } statements
+        if roll <= 18:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :arrow_down:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :arrow_up:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "high":  # God I miss switch { case: } statements
+        if roll >= 19:
+            winnings = amount * 2
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :arrow_up:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :arrow_down:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "col1":  # God I miss switch { case: } statements
+        if roll in col1:
+            winnings = amount * 3
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :one:".format(winnings, roll),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            column: int = 0
+            if roll in col2:
+                column = 2
+            else:
+                column = 3
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :{}:".format(
+                    amount, roll, "two" if column == 2 else "three"
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "col2":  # God I miss switch { case: } statements
+        if roll not in red_numbers:
+            winnings = amount * 3
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :two:".format(winnings, roll),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            column: int = 0
+            if roll in col1:
+                column = 1
+            else:
+                column = 3
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :{}:".format(
+                    amount, roll, "one" if column == 1 else "three"
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "col3":  # God I miss switch { case: } statements
+        if roll in red_numbers:
+            winnings = amount * 3
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :three:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            column: int = 0
+            if roll in col1:
+                column = 1
+            else:
+                column = 2
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :{}:".format(
+                    amount, roll, "one" if column == 1 else "two"
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+    if b == "zero":  # God I miss switch { case: } statements
+        if roll == 0:
+            winnings = amount * 50
+            bal = DATABASE.update_db(author.id, winnings, False, False)
+            if bal == -1:
+                e = compose_embed(
+                    0xFF0000, "Roulette", "Error: Could not access database"
+                )
+                await ctx.send(embed=e)
+                return
+            else:
+                e = compose_embed(
+                    0x00FF00,
+                    "Roulette",
+                    "Congratulations! You won ¤{} on [{}] :zero:".format(
+                        winnings, roll
+                    ),
+                )
+                await ctx.send(embed=e)
+                return
+        else:
+            e = compose_embed(
+                0xFF9900,
+                "Roulette",
+                "Sorry! You lost ¤{}, the roll was [{}] :slight_frown:".format(
+                    amount, roll
+                ),
+            )
+            await ctx.send(embed=e)
+            return
+
+
 # Show a user their balance
 @bot.command(aliases=["money", "balance", "eco"])
 async def bal(ctx, user: discord.User = None):
@@ -925,7 +1402,7 @@ async def lottery(ctx):
         DATABASE.update_db(author.id, LOTTO_REWARD, False, False, False)
         e = compose_embed(
             0x00FF00,
-            "Congratulations! You won ¤{} with insane luck!",
+            "Congratulations! You won ¤{} with insane luck!".format(LOTTO_REWARD),
             "Seriously, thats insane",
         )
         await ctx.send(embed=e)
@@ -938,6 +1415,74 @@ async def lottery(ctx):
         )
         await ctx.send(embed=e)
         return
+
+
+@bot.command()
+async def bw(ctx, shade: str, dice: int):
+    shade_color: str = shade.upper()
+    shade_dice: int = dice
+    if shade_color not in ["B", "W", "G"]:
+        e = compose_embed(
+            0xFF0000, "Invalid shade", "{} is not a valid shade".format(shade_color)
+        )
+        await ctx.send(embed=e)
+        return
+    if shade_dice < 1:
+        e = compose_embed(
+            0xFF0000, "No dice to roll", "Did you format the command correctly?"
+        )
+        await ctx.send(embed=e)
+        return
+    rolls: list = []
+    for i in range(shade_dice):
+        rolls.append(random.randint(1, 6))
+    output: discord.Embed = discord.Embed(
+        title="Burning Wheel",
+        description="{} {}".format(shade_color, shade_dice),
+        color=0x000000,
+    )
+    successes: int = 0
+    failures: int = 0
+    for roll in rolls:
+        if shade_color == "B":
+            if roll > 3:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Success!", inline=False
+                )
+                successes += 1
+            else:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Failure!", inline=False
+                )
+                failures += 1
+        if shade_color == "G":
+            if roll > 2:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Success!", inline=False
+                )
+                successes += 1
+            else:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Failure!", inline=False
+                )
+                failures += 1
+        if shade_color == "W":
+            if roll > 1:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Success!", inline=False
+                )
+                successes += 1
+            else:
+                output.add_field(
+                    name="Roll: {}".format(roll), value="Failure!", inline=False
+                )
+                failures += 1
+    output.add_field(
+        name="Successes: {}".format(successes),
+        value="Failures: {}".format(failures),
+        inline=False,
+    )
+    await ctx.send(embed=output)
 
 
 # Get some debug info in the console
@@ -1375,6 +1920,8 @@ async def compliment(ctx, *args):
     await ctx.send(embed=e)
 
 
+# RPG commands implemented below this line - Currently disabled
+"""
 @bot.command(aliases=["newchar", "nc"])
 async def newcharacter(ctx, name: str = "", archetype: int = -1):
     global RPGCTRL
@@ -1447,6 +1994,8 @@ async def profile(ctx):
         await ctx.send(embed=e)
         return
     archetype = ""
+    if character.archetype == -1:
+        archetype = "Divine Being"
     if character.archetype == 0:
         archetype = "Mage"
     if character.archetype == 1:
@@ -1457,10 +2006,13 @@ async def profile(ctx):
         archetype = "Rogue"
     if character.archetype == 4:
         archetype = "Priest"
+    nextLevel: int = character.level +1
+    if nextLevel == 31:
+        nextLevel = 30
     prof: discord.Embed = discord.Embed(
         title="{}, Level {} {}".format(character.name, character.level, archetype),
         description="XP: {}, Left to next level: {}".format(
-            character.xp, RPG.RPG_Level_Requirements[character.level + 1] - character.xp
+            character.xp, RPG.RPG_Level_Requirements[nextLevel] - character.xp
         ),
         color=0xFFFFFF,
     )
@@ -1491,6 +2043,6 @@ async def profile(ctx):
     )
     await ctx.send(embed=prof)
     return
-
+"""
 
 bot.run(TOKEN)
