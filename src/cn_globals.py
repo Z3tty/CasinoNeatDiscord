@@ -32,7 +32,7 @@ DAILY_STREAK_SCALAR = 2
 FINE_AMOUNT = 500
 BRIBE_PRICE = 10000
 LOTTO_REWARD = 10000000
-VERSION = "1.7"
+VERSION = "1.9"
 RPGDATA = "rpgdata/characterdata.cncrypt"
 
 # OC dont steal
