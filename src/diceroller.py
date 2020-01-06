@@ -335,6 +335,15 @@ async def help(ctx):
     helpmsg.add_field(
         name="?silent", value="Stops the bot from sending random messages", inline=False
     )
+    helpmsg.add_field(
+        name="?mball <question>", value="Ask a question, get an answer!", inline=False
+    )
+    helpmsg.add_field(
+        name="?poker", value="Start a poker game!", inline=False
+    )
+    helpmsg.add_field(
+        name="?join", value="Join an ongoing poker game!", inline=False
+    )
     adminmsg = discord.Embed(title="CN Admin commands", description="", color=0xFF0000)
     adminmsg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
     adminmsg.add_field(
@@ -2001,7 +2010,7 @@ async def start(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You need atleast 2 players to play")
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.start())
+    await ctx.send("\n".join(GAME.start()))
 
 @bot.command()
 async def deal(ctx):
@@ -2022,7 +2031,13 @@ async def deal(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You arent the dealer, please wait for {} to ?deal".format(GAME.dealer.user.name))
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.deal_hands())
+    await ctx.send("\n".join(GAME.deal_hands()))
+    for player in GAME.players:
+        cards = player.cards
+        if player.user.dm_channel == None:
+            await player.user.create_dm()
+        channel = player.user.dm_channel
+        await channel.send("Your cards:\n{}{} / {}{}".format(cards[0].suit, cards[0].rank, cards[1].suit, cards[1].rank))
 
 @bot.command()
 async def call(ctx):
@@ -2047,7 +2062,7 @@ async def call(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant call yet".format(GAME.current_player.user.name))
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.call())
+    await ctx.send("\n".join(GAME.call()))
 
 @bot.command()
 async def check(ctx):
@@ -2076,9 +2091,9 @@ async def check(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant check yet, you have only bet ${} out of ${}".format(GAME.current_player.cur_bet, GAME.cur_bet))
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.check())
+    await ctx.send("\n".join(GAME.check()))
 
-@bot.command(alias=["raise"])
+@bot.command(aliases=["raise"])
 async def raise_bet(ctx, amount: int):
     global GAME
     if GAME.state == GameState.NO_GAME:
@@ -2110,7 +2125,7 @@ async def raise_bet(ctx, amount: int):
             e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You dont have enough money to raise by ${}, the most you can raise by is ${}".format(amount, GAME.current_player.max_bet - GAME.cur_bet))
             await ctx.send(embed=e)
             return
-        await ctx.send(GAME.raise_bet(amount))
+        await ctx.send("\n".join(GAME.raise_bet(amount)))
     except ValueError:
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Please raise by an integer amount")
         await ctx.send(embed=e)
@@ -2140,7 +2155,7 @@ async def fold(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant fold yet".format(GAME.current_player.user.name))
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.fold())
+    await ctx.send("\n".join(GAME.fold()))
 
 @bot.command()
 async def chips(ctx):
@@ -2178,7 +2193,7 @@ async def allin(ctx):
         e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant go all in yet".format(GAME.current_player.user.name))
         await ctx.send(embed=e)
         return
-    await ctx.send(GAME.all_in())
+    await ctx.send("\n".join(GAME.all_in()))
 
 @bot.command()
 async def endgame(ctx):
