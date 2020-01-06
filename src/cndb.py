@@ -23,10 +23,11 @@ from colorama import Fore as F
 from colorama import Style as S
 from colorama import Back as B
 from datetime import datetime as dt
+import json
+from user import CNDBUser
 
 
 class CNDatabase:
-    _db_separator: str = "/"
     _db_map_index: int = 0
     _db_map: list = []
 
@@ -38,29 +39,21 @@ class CNDatabase:
 
         line: str = "0000000000000000"
         with open(DB, "r") as db:
-            while line != "":
+            line = db.readline()
+            while line != "":      
                 try:
-                    line = db.readline().rstrip().lstrip()  # check users
-                    split: list = line.split(self._db_separator)
-                    if len(split) > 2:
-                        usr: list = split
-                        self._db_map.append(usr)
+                    u: CNDBUser = CNDBUser()
+                    u.setall(json.loads(line))
+                    if not u.empty():
+                        self._db_map.append(u)
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB::Pull->Read user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}, Failed thefts: {}".format(
-                                self._db_map[self._db_map_index][0],
-                                self._db_map[self._db_map_index][1],
-                                self._db_map[self._db_map_index][2],
-                                self._db_map[self._db_map_index][3],
-                                self._db_map[self._db_map_index][4],
-                                self._db_map[self._db_map_index][5],
-                                self._db_map[self._db_map_index][6],
-                                self._db_map[self._db_map_index][7],
-                            )
+                            + "CNDB::Pull->Read user {}".format(u.getall())
                             + S.RESET_ALL
                         )
                         self._db_map_index += 1
+                    line = db.readline()
                 except StopIteration:
                     print(
                         "CNDB::Pull->End of file encountered when reading through data stored on disk"
@@ -74,41 +67,15 @@ class CNDatabase:
             with open(DB, "w") as clear:
                 clear.write("")
             self._db_map_index = 0
-            line: str = "0000000000000000"
             with open(DB, "a") as db:
-                while line != "" and self._db_map_index < len(self._db_map):
+                while self._db_map_index < len(self._db_map):
                     try:
-                        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
-                            self._db_map[self._db_map_index][0],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][1],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][2],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][3],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][4],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][5],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][6],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][7],
-                        )
-                        db.write(line)
+                        u: CNDBUser = self._db_map[self._db_map_index]
+                        db.write(json.dumps(u.getall()) + "\n")
                         print(
                             B.BLUE
                             + F.WHITE
-                            + "CNDB::Push->Wrote user with ID:{} - ¤{} : {}xp : Last Daily:{}, Daily Streak:{}, Sent cookies:{}, Recieved cookies:{}, Failed thefts: {}".format(
-                                self._db_map[self._db_map_index][0],
-                                self._db_map[self._db_map_index][1],
-                                self._db_map[self._db_map_index][2],
-                                self._db_map[self._db_map_index][3],
-                                self._db_map[self._db_map_index][4],
-                                self._db_map[self._db_map_index][5],
-                                self._db_map[self._db_map_index][6],
-                                self._db_map[self._db_map_index][7],
-                            )
+                            + "CNDB::Push->Wrote user {}".format(u.getall())
                             + S.RESET_ALL
                         )
                         self._db_map_index += 1
@@ -124,29 +91,20 @@ class CNDatabase:
 
         userid: str = str(user.id)
         for user in self._db_map:
-            if user[0] == userid:
+            if user.getprop("id") == userid:
                 return None
-        new_user: list = [userid, "1000", "0", "-1", "0", "0", "0", "0"]
+        new_user: CNDBUser = CNDBUser()
+        new_user.setprop("id", userid)
+        new_user.setprop("balance", "1000")
+        new_user.setprop("xp", "0")
+        new_user.setprop("last_daily", "0")
+        new_user.setprop("daily_streak", "0")
+        new_user.setprop("cookies_sent", "0")
+        new_user.setprop("cookies_got", "0")
+        new_user.setprop("thefts_failed", "0")
         self._db_map.append(new_user)
-        line = "{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}\n".format(
-                            self._db_map[self._db_map_index][0],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][1],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][2],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][3],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][4],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][5],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][6],
-                            self._db_separator,
-                            self._db_map[self._db_map_index][7],
-        )
         with open(DB, "a") as db:
-            db.write(line)
+            db.write(json.dumps(new_user.getall()) + "\n")
         self._db_map_index += 1
         return -1
 
@@ -157,52 +115,52 @@ class CNDatabase:
         global HAS_CHANGED_DB
 
         for user in self._db_map:
-            if user[0] == str(userid):
+            if user.getprop("id") == str(userid):
                 HAS_CHANGED_DB = True
                 if isXP:
                     if sub:
-                        user[2] = int(user[2]) - amount
+                        user.setprop("xp", str(int(user.getprop("xp")) - amount))
                     else:
-                        user[2] = int(user[2]) + amount
-                    return int(user[2])
+                        user.setprop("xp", str(int(user.getprop("xp")) + amount))
+                    return int(user.getprop("xp"))
                 else:
                     if isBet:
-                        if amount > int(user[1]):
+                        if amount > int(user.getprop("balance")):
                             return -1
                         if sub:
-                            user[1] = str(int(user[1]) - amount)
+                            user.setprop("balance", str(int(user.getprop("balance")) - amount))
                         else:
-                            user[1] = str(int(user[1]) + amount)
+                            user.setprop("balance", str(int(user.getprop("balance")) + amount))
                     else:
                         if sub:
-                            user[1] = str(int(user[1]) - amount)
+                            user.setprop("balance", str(int(user.getprop("balance")) - amount))
                         else:
-                            user[1] = str(int(user[1]) + amount)
-                    return int(user[1])
+                            user.setprop("balance", str(int(user.getprop("balance")) + amount))
+                    return int(user.getprop("balance"))
         return -1
 
     def print_internal_state(self) -> None:
         for user in self._db_map:
-            print(user)
+            print(user.getall())
 
     def update_daily(self, userid) -> (int, int):
         global DAILY_BONUS
         global DAILY_STREAK_SCALAR
 
         allowed = False
-        user = []
+        user: CNDBUser = CNDBUser()
         index = 0
         for u in self._db_map:
-            if u[0] == str(userid):
+            if u.getprop("id") == str(userid):
                 user = u
                 break
             else:
                 index += 1
-        if user == []:
+        if user.empty():
             print("Error: No user found")
-            print("Got: {}".format(user))
+            print("Got: {}".format(user.getall()))
             return (-1, -1)
-        last = user[3]
+        last = user.getprop("last_daily")
         now = dt.today()
         day: str = str(now.day)
         month: str = str(now.month)
@@ -226,18 +184,18 @@ class CNDatabase:
         if last != daily_str:
             allowed = True
         if allowed:
-            user[3] = daily_str
-            current_streak = int(user[4])
+            user.setprop("last_daily", daily_str)
+            current_streak = int(user.getprop("daily_streak"))
             if int(last) == int(daily_str) - 1:
                 current_streak += 1
             else:
                 current_streak = 0
-            user[1] = str(
-                int(user[1])
+            user.setprop("balance", str(
+                int(user.getprop("balance"))
                 + DAILY_BONUS
                 + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR)
-            )
-            user[4] = str(current_streak)
+            ))
+            user.setprop("daily_streak", str(current_streak))
             self._db_map[index] = user
             return (
                 DAILY_BONUS + (DAILY_BONUS * current_streak * DAILY_STREAK_SCALAR),
@@ -247,52 +205,52 @@ class CNDatabase:
             return (-1, -1)
 
     def send_cookie(self, userid_sender, userid_reciever) -> (int, int):
-        sender = []
-        reciever = []
+        sender: CNDBUser = CNDBUser()
+        reciever: CNDBUser = CNDBUser()
         sender_idx = 0
         reciever_idx = 0
         index = 0
         for u in self._db_map:
-            if u[0] == str(userid_sender):
+            if u.getprop("id") == str(userid_sender):
                 sender = u
                 sender_idx = index
-            if u[0] == str(userid_reciever):
+            if u.getprop("id") == str(userid_reciever):
                 reciever = u
                 reciever_idx = index
             index += 1
-        if sender == [] or reciever == []:
+        if sender.empty() or reciever.empty():
             return (-1, -1)
-        sender_sent = int(sender[5]) + 1
-        sender_recv = int(sender[6])
-        reciever_recv = int(reciever[6]) + 1
-        self._db_map[sender_idx][5] = str(sender_sent)
-        self._db_map[reciever_idx][6] = str(reciever_recv)
+        sender_sent = int(sender.getprop("cookies_sent")) + 1
+        sender_recv = int(sender.getprop("cookies_got"))
+        reciever_recv = int(reciever.getprop("cookies_got")) + 1
+        self._db_map[sender_idx].setprop("cookies_sent", str(sender_sent))
+        self._db_map[reciever_idx].setprop("cookies_got", str(reciever_recv))
         return (sender_sent, sender_recv)
 
     def get_user_list(self):
         ids = []
         for user in self._db_map:
-            ids.append(user[0])
+            ids.append(user.getprop("id"))
         return ids
 
     def update_user_thefts(
         self, userid, reset: bool = False, fetch: bool = False
     ) -> int:
-        user = []
+        user: CNDBUser = CNDBUser()
         index = 0
         for u in self._db_map:
-            if u[0] == str(userid):
+            if u.getprop("id") == str(userid):
                 user = u
                 break
             index += 1
         if fetch:
-            return int(user[7])
+            return int(user.getprop("thefts_failed"))
         if reset:
-            user[7] = "0"
+            user.setprop("thefts_failed", "0")
             self._db_map[index] = user
             return 0
         else:
-            tmp = int(user[7])
-            user[7] = str(tmp + 1)
+            tmp = int(user.getprop("thefts_failed"))
+            user.setprop("thefts_failed", str(tmp + 1))
             self._db_map[index] = user
             return tmp + 1
