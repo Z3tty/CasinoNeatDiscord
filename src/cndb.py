@@ -233,6 +233,9 @@ class CNDatabase:
         for user in self._db_map:
             ids.append(user.getprop("id"))
         return ids
+    
+    def get_users(self):
+        return self._db_map
 
     def update_user_thefts(
         self, userid, reset: bool = False, fetch: bool = False
