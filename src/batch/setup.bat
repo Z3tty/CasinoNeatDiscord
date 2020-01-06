@@ -14,12 +14,7 @@ cd ..
 echo Done!
 echo Setting up DB ...
 cd DB
-type NUL > database.cndb
-cd ..
-echo Done!
-echo Creating RPG data file ...
-cd rpgdata
-type NUL > characterdata.cncrypt
+type NUL > database.json
 cd ..
 echo Done!
 echo Now just use the run file and enjoy the bot!
