@@ -26,21 +26,37 @@ from colorama import Style as S
 from colorama import Back as B
 from datetime import datetime
 import random
-
-# Logging
 import logging
+
+
 from cn_globals import *
 import cndb
 import RPG
+from collections import namedtuple
+import os
+from typing import Dict, List
+from subprocess import Popen
+
+import discord
+import random
+
+from game import Game, GAME_OPTIONS, GameState
+import pot
+
+print(F.WHITE + B.GREEN + S.BRIGHT + "[IMPORTS COMPLETE] -- You may freely disregard this message!" + S.RESET_ALL)
 
 # RPGCTRL = RPG.RPGController()
 # RPGCTRL.pull()
 DATABASE = cndb.CNDatabase()
 DATABASE.pull()
+GAME: Game = Game()
 
+
+logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
 logging.basicConfig(level=logging.CRITICAL)
+
 # Bot setup, and global variables that make things easier for me
 bot = commands.Bot(command_prefix="?", case_insensitive=True)
 
@@ -71,6 +87,7 @@ def compose_embed(color, name: str, content: str) -> discord.Embed:
 async def on_command_error(ctx, error):
     if isinstance(error, CommandNotFound):
         return
+    print(F.RED + S.BRIGHT)
     raise error
 
 
@@ -426,6 +443,14 @@ async def cookie(ctx, target: discord.User):
             ":cookie: sent: {}, :cookie: recieved: {}".format(info[0], info[1]),
         )
     await ctx.send(embed=e)
+
+
+@bot.command(alias=["8ball"])
+async def mball(ctx):
+    response: str = random.choice(["It is so", "Don't count on it", "Certainly so", "Unsure", "Likely so", "Unlikely"])
+    e = compose_embed(0xFFFFFF, "Magic 8-ball", response)
+    await ctx.send(embed=e)
+    return
 
 
 @bot.command()
@@ -1919,6 +1944,302 @@ async def compliment(ctx, *args):
     e = compose_embed(0xFF00FF, msg, "ID: {}".format(author.id))
     await ctx.send(embed=e)
 
+
+@bot.command()
+async def sadviolinnoises(ctx):
+    message: str = "Ok man. I guess you don't really matter to me. Good luck what what ever you continue on to do and I hope you have a wonderful life. It seems at this point we must diverge, it seems like we don't really seem to have anything in common to talk about and so it would be best to just no longer pretend to care about each other. Thank you for being honest with your statement since it's be an issue I have not been sure how to deal with properly up until now. I guess I have been a shitty person for not being able to take a moment out of my sleepless nights to contact you so if my short coming on that regard has offended you in any way shape or form I do apologize. To address any possible returning statements, as once I have sent this message based on your prior statement it seems that my best course of action is to cut contact, you seem to state talking like penguin is an issue and insinuated that I spoke like an over exaugurated version of him. This message has been formatted to how our current stance is as we shall now define it as at best acquaintances, as I have emotionally distanced myself from you at this point I have resorted to formal speech since that is just who I am. Ridicule it if you so wish, at this point it seems that you no longer wish for me to be around anymore so that will be arranged. Do not worry about any personal information you have disclosed being leaked out. As my nature dictates me I tend to try and keep information given to me in confidence as such. It is unlikely any thing which I have screen shot or remember from our past conversations will be brought up by me in any place. Since it is likely you will share this conversation with Manis as we often have done in the past. I also advice him to let me know if he wants to formalize this cutting of contact to ensure no awkward conversations that neither of us desire such as this occurs again. Again I wish the both of you the best of luck and thank you for being honest with me. Good night."
+    await ctx.send("```{}```".format(message))
+
+
+@bot.command()
+async def poker(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        GAME.new_game()
+        GAME.add_player(ctx.author)
+        GAME.state = GameState.WAITING
+        e: discord.Embed = compose_embed(0x00FF00, "Poker Game", "A new poker game was just created by {}!".format(ctx.author.name))
+        await ctx.send(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "A game has already been made! {}".format("You can join it with ?join" if GAME.state == GameState.WAITING else ""))
+        await ctx.send(embed=e)
+
+@bot.command()
+async def join(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "There is currently no game to join! Message ?poker to make one!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state != GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game is currently in progress, you cant join!")
+        await ctx.send(embed=e)
+        return
+    if GAME.add_player(ctx.author):
+        e: discord.Embed = compose_embed(0x00FF00, "Poker Game", "{} just joined the game!".format(ctx.author.name))
+        await ctx.send(embed=e)
+        return
+    e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant join a game you're already in!")
+    await ctx.send(embed=e)
+
+@bot.command()
+async def start(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant start a game that hasnt been made yet! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state != GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game is already started!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You're not in the game! ?join")
+        await ctx.send(embed=e)
+        return
+    if len(GAME.players) < 2:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You need atleast 2 players to play")
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.start())
+
+@bot.command()
+async def deal(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant deal if there isnt a game")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You need to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state != GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have already dealt for this round")
+        await ctx.send(embed=e)
+        return
+    if GAME.dealer.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You arent the dealer, please wait for {} to ?deal".format(GAME.dealer.user.name))
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.deal_hands())
+
+@bot.command()
+async def call(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to call!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant call yet".format(GAME.current_player.user.name))
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.call())
+
+@bot.command()
+async def check(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to check!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant check yet".format(GAME.current_player.user.name))
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.cur_bet != GAME.cur_bet:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant check yet, you have only bet ${} out of ${}".format(GAME.current_player.cur_bet, GAME.cur_bet))
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.check())
+
+@bot.command(alias=["raise"])
+async def raise_bet(ctx, amount: int):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to raise!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant raise yet".format(GAME.current_player.user.name))
+        await ctx.send(embed=e)
+        return
+    try:
+        if GAME.cur_bet >= GAME.current_player.max_bet:
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You dont have enough money to raise the current bet of ${}".format(GAME.cur_bet))
+            await ctx.send(embed=e)
+            return
+        if GAME.cur_bet + amount > GAME.current_player.max_bet:
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You dont have enough money to raise by ${}, the most you can raise by is ${}".format(amount, GAME.current_player.max_bet - GAME.cur_bet))
+            await ctx.send(embed=e)
+            return
+        await ctx.send(GAME.raise_bet(amount))
+    except ValueError:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Please raise by an integer amount")
+        await ctx.send(embed=e)
+        return
+
+
+@bot.command()
+async def fold(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to fold!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant fold yet".format(GAME.current_player.user.name))
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.fold())
+
+@bot.command()
+async def chips(ctx):
+    global GAME
+    if GAME.state in (GameState.NO_GAME, GameState.WAITING):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant request the chip count before the game has begun")
+        await ctx.send(embed=e)
+        return
+    message: str = ""
+    for player in GAME.players:
+        message += "{} has ${}\n".format(player.user.name, player.balance)
+    e: discord.Embed = compose_embed(0xFF00FF, "Poker Game", message)
+    await ctx.send(embed=e)
+
+@bot.command()
+async def allin(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.WAITING:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        await ctx.send(embed=e)
+        return
+    if not GAME.is_player(ctx.author):
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to go all in!")
+        await ctx.send(embed=e)
+        return
+    if GAME.state == GameState.NO_HANDS:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        await ctx.send(embed=e)
+        return
+    if GAME.current_player.user != ctx.author:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant go all in yet".format(GAME.current_player.user.name))
+        await ctx.send(embed=e)
+        return
+    await ctx.send(GAME.all_in())
+
+@bot.command()
+async def endgame(ctx):
+    global GAME
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        GAME.players = []
+        if GAME.state == GameState.WAITING:
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game ended before it began. Make up your mind before you waste my time alright?")
+            await ctx.send(embed=e)
+        elif GAME.state in (GameState.NO_HANDS, GameState.HANDS_DEALT):
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Fun's over! Nothing to see here, people!")
+            await ctx.send(embed=e)
+        elif GAME.state in (GameState.FLOP_DEALT, GameState.TURN_DEALT, GameState.RIVER_DEALT):
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Fun's over! Put down that deck of cards! Don't you dare deal anything!")
+            await ctx.send(embed=e)
+        else:
+            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You just tried to end a game that wasnt even started yet, didnt you? Monster.")
+            await ctx.send(embed=e)
+        GAME.state = GameState.NO_GAME
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Nice try {}, but you dont look like an admin to me, and I dont take orders from plebs.".format(ctx.author.name))
+        await ctx.send(embed=e)
+
+@bot.command()
+async def leave(ctx):
+    global GAME
+    if GAME.state == GameState.NO_GAME:
+        await ctx.send("Theres no game to leave!")
+    else:
+        usr = ctx.author.name
+        i = 0
+        while i < len(GAME.players):
+            player = GAME.players[i]
+            if player.user.name == usr:
+                GAME.players.pop(i)
+                if len(GAME.players) == 0:
+                	GAME.players = []
+                	GAME.state = GameState.NO_GAME
+                	await ctx.send("Congrats, you just killed a game you started for no reason! Have you no consideration for the cycles you just wasted?")
+                if len(GAME.players) > 1:
+                    GAME.pot.handle_fold(player)
+                    GAME.leave_hand(player)
+                    try:
+                        if GAME.turn_index > len(GAME.in_hand):
+                            GAME.turn_index = len(GAME.in_hand)-1
+                        if GAME.dealer_index > len(GAME.players):
+                        	GAME.dealer_index = len(GAME.players)-1
+                    except:
+                        print("******************[!] EXCEPTION TRYING TO SET INDICES [!]******************")
+                    await ctx.send("**{}** Dropped out!\n**{}** is dealer and its **{}'s** turn!\n".format(usr, GAME.players[GAME.dealer_index].user.mention,GAME.in_hand[GAME.turn_index].user.mention))
+                elif len(GAME.players) == 1:
+                    if GAME.state == GameState.WAITING:
+                        GAME.state = GameState.NO_GAME
+                        await ctx.send("Woops! Looks like **{}** dosen't wanna play after all!".format(usr))
+                    else:
+                        GAME.state = GameState.NO_GAME
+                        await ctx.send("**{}** wins the game due to the forfeit of {}".format(GAME.players[0].user.mention, usr))
+            else:
+                i+=1
+        await ctx.send("You're not even in the game {}".format(ctx.author.mention))
 
 # RPG commands implemented below this line - Currently disabled
 """
