@@ -1826,8 +1826,8 @@ async def order(ctx, drink: str = "empty"):
     author = ctx.message.author
     debug_console_log("order", author, "Drink: {}".format(drink))
     # Dict would be preferable but I'm tired and just want to iterate
-    drinks: list = ["beer", "cider", "wine", "rum", "vodka", "whiskey"]
-    prices: list = [5, 5, 10, 12, 12, 15]
+    drinks: list = ["beer", "cider", "wine", "vodka", "rum", "cognac", "whiskey"]
+    prices: list = [500, 1000, 2500, 5000, 10000, 15000, 30000]
     if drink == "empty":
         e = discord.Embed(title="CN Diceroller", description="", color=0x662200)
         e.add_field(
@@ -1841,12 +1841,14 @@ async def order(ctx, drink: str = "empty"):
     else:
         if drink.lower() in drinks:
             price = prices[drinks.index(drink.lower())]
+            randxp: int = random.randint(price/10 - (price/100), price/10 + (price/100))
             update_success: int = DATABASE.update_db(author.id, price, True)
-            if update_success != -1:
+            update_xp: int = DATABASE.update_db(author.id, randxp, False, False, True)
+            if update_success != -1 and update_xp != -1:
                 e = compose_embed(
                     0xFFFFFF,
                     "You buy a class of {}".format(drink.lower()),
-                    "You feel scammed",
+                    "You gain {}xp!".format(randxp),
                 )
                 await ctx.send(embed=e)
             else:
@@ -2255,6 +2257,33 @@ async def leave(ctx):
             else:
                 i+=1
         await ctx.send("You're not even in the game {}".format(ctx.author.mention))
+
+@bot.command(aliases=["lb"])
+async def leaderboard(ctx, ranking: str = ""):
+    global DATABASE
+    rankings: list = [
+        "xp",
+        "balance",
+        "cookies",
+    ]
+    if ranking not in rankings:
+        e: discord.Embed = compose_embed(0xFF0000, "Leaderboard", "Please provide one of the following ranking qualifiers")
+        for rank in rankings:
+            e.add_field(name="Ranking", value=rank, inline=False)
+        await ctx.send(embed=e)
+        return
+    if ranking == "cookies": ranking = "cookies_got"
+    users: list = DATABASE.get_users()
+    users.sort(key = lambda user: int(user.getprop(ranking)), reverse=True)
+        
+    e: discord.Embed = compose_embed(0xFFFF00, "{} Leaderboard".format(ranking), "Users registered: {}".format(len(users)))
+    placement: int = 1
+    for user in users:
+        u = ctx.message.guild.get_member(int(user.getprop("id")))
+        e.add_field(name="{} {}".format(placement, u.name), value="{}{} {}".format("¤" if ranking == "balance" else "", user.getprop(ranking), ranking.replace("_got", "") if ranking != "balance" else ""), inline=False)
+        placement += 1
+    await ctx.send(embed=e)
+
 
 # RPG commands implemented below this line - Currently disabled
 """
