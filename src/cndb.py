@@ -97,7 +97,7 @@ class CNDatabase:
         new_user.setprop("id", userid)
         new_user.setprop("balance", "1000")
         new_user.setprop("xp", "0")
-        new_user.setprop("last_daily", "0")
+        new_user.setprop("last_daily", "0/0/0")
         new_user.setprop("daily_streak", "0")
         new_user.setprop("cookies_sent", "0")
         new_user.setprop("cookies_got", "0")
@@ -160,7 +160,8 @@ class CNDatabase:
             print("Error: No user found")
             print("Got: {}".format(user.getall()))
             return (-1, -1)
-        last = user.getprop("last_daily")
+        last: str = user.getprop("last_daily")
+        llist: list = last.split("/")
         now = dt.today()
         day: str = str(now.day)
         month: str = str(now.month)
@@ -168,12 +169,12 @@ class CNDatabase:
             day = "0{}".format(day)
         if int(month) < 10:
             month = "0{}".format(month)
-        daily_str = str(str(now.year) + month + day)
-        last_month: str = str(last[len(last) - 4]) + str(last[len(last) - 3])
-        last_day: str = str(last[len(last) - 2]) + str(last[len(last) - 1])
+        daily_str = "{}/{}/{}".format(now.year, month, day)
+        last_month: str = llist[1]
+        last_day: str = llist[2]
         if last_month in ["01", "03", "05", "07", "08", "10", "12"]:
             if day == "01" and last_day == "31":
-                last = str(int(daily_str) - 1)
+                last = str(int(daily_str.replace("/", "")) - 1)
         if last_month == "02":
             if day == "01" and last_day == "28":
                 last = str(int(daily_str) - 1)
@@ -186,7 +187,7 @@ class CNDatabase:
         if allowed:
             user.setprop("last_daily", daily_str)
             current_streak = int(user.getprop("daily_streak"))
-            if int(last) == int(daily_str) - 1:
+            if int(last.replace("/", "")) == int(daily_str.replace("/", "")) - 1:
                 current_streak += 1
             else:
                 current_streak = 0
