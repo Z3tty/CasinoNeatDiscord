@@ -15,7 +15,7 @@
 """
 # I'm really sorry but globals are really the easiest way of handling this
 RIGGED = False
-DB = "DB/database.cndb"
+DB = "DB/database.json"
 AUTHOR = "Zet#1024 (github.com/ZexZee)"
 RANDOM_EVENT_CURRENTLY = False
 RANDOM_EVENT_AMOUNT = 0
@@ -25,7 +25,7 @@ CRATE_REWARD_AMOUNT = 0
 FILTER_USERS = False
 FILTER_BOTS = False
 FILTER_LOGS = False
-DB_PUSH_TIMEOUT = 60.0
+DB_PUSH_TIMEOUT = 300.0
 HAS_CHANGED_DB = False
 DAILY_BONUS = 500
 DAILY_STREAK_SCALAR = 2
@@ -33,7 +33,7 @@ FINE_AMOUNT = 500
 BRIBE_PRICE = 10000
 LOTTO_REWARD = 10000000
 VERSION = "1.9"
-RPGDATA = "rpgdata/characterdata.cncrypt"
+SILENT = False
 
 # OC dont steal
 TOKEN = ""
