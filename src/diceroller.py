@@ -31,11 +31,12 @@ import logging
 
 from cn_globals import *
 import cndb
-import RPG
+from RPG import Generator
 from collections import namedtuple
 import os
 from typing import Dict, List
 from subprocess import Popen
+import json
 
 import discord
 import random
@@ -43,13 +44,23 @@ import random
 from game import Game, GAME_OPTIONS, GameState
 import pot
 
-print(F.WHITE + B.GREEN + S.BRIGHT + "[IMPORTS COMPLETE] -- You may freely disregard this message!" + S.RESET_ALL)
+print(
+    F.WHITE
+    + B.GREEN
+    + S.BRIGHT
+    + "[IMPORTS COMPLETE] -- You may freely disregard this message!"
+    + S.RESET_ALL
+)
 
 # RPGCTRL = RPG.RPGController()
 # RPGCTRL.pull()
 DATABASE = cndb.CNDatabase()
+GENERATOR = Generator()
 DATABASE.pull()
 GAME: Game = Game()
+
+RAID_PLAYERS = []
+RAID_BOSS = {}
 
 
 logging.basicConfig(level=logging.INFO)
@@ -154,9 +165,7 @@ async def on_message(message):
     # Necessary variables for logging, events, etc.
     # Also cleaning of message contents for a better reading experience
     rnd = random.randint(0, 5000)
-    guild = message.guild
     author = message.author
-    channel = message.channel
     content = message.content
     content = content.replace("*", "")
     content = content.replace("`", "")
@@ -166,20 +175,14 @@ async def on_message(message):
     if not author.bot:
         msg = DATABASE.register(author)
         if msg != None:
-            if not SILENT:
-                await message.channel.send(
-                    "```User {} has been registered!```".format(author.name)
-                )
+            print("User {} has been registered!".format(author.name))
         xp = random.randint(10, 25)
         debug_console_log("on_message", author, "awarded {}xp for messsage".format(xp))
         xp_return: int = DATABASE.update_db(
             author.id, xp, False, False, True
         )  # -1 if not registered
         if xp_return == -1:
-            if not SILENT:
-                await message.channel.send(
-                    "```User {} has been registered!```".format(author.name)
-                )
+            print("User {} has been registered!".format(author.name))
     # Random cash events
     if rnd < 100 and rnd > 10 and not RANDOM_EVENT_CURRENTLY and not SILENT:
         RANDOM_EVENT_CURRENTLY = True
@@ -338,12 +341,19 @@ async def help(ctx):
     helpmsg.add_field(
         name="?mball <question>", value="Ask a question, get an answer!", inline=False
     )
-    helpmsg.add_field(
-        name="?poker", value="Start a poker game!", inline=False
-    )
-    helpmsg.add_field(
-        name="?join", value="Join an ongoing poker game!", inline=False
-    )
+    helpmsg.add_field(name="?poker", value="Start a poker game!", inline=False)
+    helpmsg.add_field(name="?join", value="Join an ongoing poker game!", inline=False)
+    rpgmsg = discord.Embed(title="RPG Help", description="", color=0x008800)
+    rpgmsg.add_field(name="?trade <user> <your item id> <their item id>", value="Trade items with a user", inline=False)
+    rpgmsg.add_field(name="?trades", value="See your pending trades", inline=False)
+    rpgmsg.add_field(name="?accept <trade id>", value="Accept a trade", inline=False)
+    rpgmsg.add_field(name="?decline <trade id>", value="Decline a trade", inline=False)
+    rpgmsg.add_field(name="?inventory [user]", value="See your or someone elses inventory [alias: inv]", inline=False)
+    rpgmsg.add_field(name="?dungeon <tier>", value="Try to fight a tiered boss", inline=False)
+    rpgmsg.add_field(name="?raid [START]", value="create/join or start a raid", inline=False)
+    rpgmsg.add_field(name="?equip <id>", value="Equip an item", inline=False)
+    rpgmsg.add_field(name="?sell <id>", value="Sell an item", inline=False)
+    rpgmsg.add_field(name="?sheet", value="View your character data", inline=False)
     adminmsg = discord.Embed(title="CN Admin commands", description="", color=0xFF0000)
     adminmsg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
     adminmsg.add_field(
@@ -365,10 +375,9 @@ async def help(ctx):
     filters.add_field(name="all", value="Toggles all messages on", inline=False)
     filters.add_field(name="none", value="Toggles all messages off", inline=False)
     await channel.send(embed=helpmsg)
+    await channel.send(embed=rpgmsg)
     await channel.send(embed=adminmsg)
     await channel.send(embed=filters)
-    emoji = "\N{THUMBS UP SIGN}"
-    await ctx.message.add_reaction(emoji)
 
 
 @bot.command()
@@ -456,7 +465,16 @@ async def cookie(ctx, target: discord.User):
 
 @bot.command(alias=["8ball"])
 async def mball(ctx):
-    response: str = random.choice(["It is so", "Don't count on it", "Certainly so", "Unsure", "Likely so", "Unlikely"])
+    response: str = random.choice(
+        [
+            "It is so",
+            "Don't count on it",
+            "Certainly so",
+            "Unsure",
+            "Likely so",
+            "Unlikely",
+        ]
+    )
     e = compose_embed(0xFFFFFF, "Magic 8-ball", response)
     await ctx.send(embed=e)
     return
@@ -684,7 +702,7 @@ async def level(ctx, user: discord.User = None):
     level = 0
     while tmp > 0:
         level += 1
-        tmp -= 500 + (250 * level)  # To make later levels a bit more challenging
+        tmp -= (1500 * level)
     e = compose_embed(
         0xFFFFFF,
         "{}, Level {}".format(target.name, level),
@@ -696,6 +714,7 @@ async def level(ctx, user: discord.User = None):
 @bot.command(aliases=["d"])
 async def daily(ctx):
     global DATABASE
+    global GENERATOR
     global DAILY_BONUS
 
     author = ctx.message.author
@@ -710,6 +729,10 @@ async def daily(ctx):
             ),
             "ID: {}".format(author.id),
         )
+        if random.randint(0, 10) < 6:
+            item = GENERATOR.random_item(100)
+            e.add_field(name="Neat RPG", value="{} was super lucky and got the item {} #{} ({}/{}/{})".format(author.name, item["name"], item["rarity"], item["ATK"], item["DEF"], item["LUCK"]))
+            DATABASE.add_item(author.id, item)
     else:
         e = compose_embed(
             0xFF0000,
@@ -1630,7 +1653,6 @@ async def steal(ctx, target: discord.User):
         await ctx.send(embed=e)
         return
     theft_successful: bool = False
-    theft_limit: bool = False
     tmp = DATABASE.update_user_thefts(author.id, False, True)
     if tmp > 10:
         e = compose_embed(
@@ -1687,13 +1709,11 @@ async def steal(ctx, target: discord.User):
             return
         else:
             author_money: int = DATABASE.update_db(author.id, 0, False, False)
-            author_xp: int = DATABASE.update_db(author.id, 0, False, False, True)
             tmp = DATABASE.update_db(author.id, int(author_money * 0.9), True, False)
-            tmp = DATABASE.update_db(author.id, author_xp, True, False, True)
             e = compose_embed(
                 0xFF0000,
                 "Stop right there, criminal scum!",
-                "You were thrown in jail, losing all your xp and 90\% of your money!",
+                "You were thrown in jail, losing 90\% of your money!",
             )
             await ctx.send(embed=e)
             return
@@ -1841,13 +1861,15 @@ async def order(ctx, drink: str = "empty"):
     else:
         if drink.lower() in drinks:
             price = prices[drinks.index(drink.lower())]
-            randxp: int = random.randint(price/10 - (price/100), price/10 + (price/100))
+            randxp: int = random.randint(
+                price / 10 - (price / 100), price / 10 + (price / 100)
+            )
             update_success: int = DATABASE.update_db(author.id, price, True)
             update_xp: int = DATABASE.update_db(author.id, randxp, False, False, True)
             if update_success != -1 and update_xp != -1:
                 e = compose_embed(
                     0xFFFFFF,
-                    "You buy a class of {}".format(drink.lower()),
+                    "You buy a glass of {}".format(drink.lower()),
                     "You gain {}xp!".format(randxp),
                 )
                 await ctx.send(embed=e)
@@ -1969,68 +1991,113 @@ async def poker(ctx):
         GAME.new_game()
         GAME.add_player(ctx.author)
         GAME.state = GameState.WAITING
-        e: discord.Embed = compose_embed(0x00FF00, "Poker Game", "A new poker game was just created by {}!".format(ctx.author.name))
+        e: discord.Embed = compose_embed(
+            0x00FF00,
+            "Poker Game",
+            "A new poker game was just created by {}!".format(ctx.author.name),
+        )
         await ctx.send(embed=e)
     else:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "A game has already been made! {}".format("You can join it with ?join" if GAME.state == GameState.WAITING else ""))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "A game has already been made! {}".format(
+                "You can join it with ?join" if GAME.state == GameState.WAITING else ""
+            ),
+        )
         await ctx.send(embed=e)
+
 
 @bot.command()
 async def join(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "There is currently no game to join! Message ?poker to make one!")
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "There is currently no game to join! Message ?poker to make one!",
+        )
         await ctx.send(embed=e)
         return
     if GAME.state != GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game is currently in progress, you cant join!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Game is currently in progress, you cant join!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.add_player(ctx.author):
-        e: discord.Embed = compose_embed(0x00FF00, "Poker Game", "{} just joined the game!".format(ctx.author.name))
+        e: discord.Embed = compose_embed(
+            0x00FF00, "Poker Game", "{} just joined the game!".format(ctx.author.name)
+        )
         await ctx.send(embed=e)
         return
-    e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant join a game you're already in!")
+    e: discord.Embed = compose_embed(
+        0xFF0000, "Poker Game", "You cant join a game you're already in!"
+    )
     await ctx.send(embed=e)
+
 
 @bot.command()
 async def start(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant start a game that hasnt been made yet! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "You cant start a game that hasnt been made yet! ?poker",
+        )
         await ctx.send(embed=e)
         return
     if GAME.state != GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game is already started!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Game is already started!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You're not in the game! ?join")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You're not in the game! ?join"
+        )
         await ctx.send(embed=e)
         return
     if len(GAME.players) < 2:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You need atleast 2 players to play")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You need atleast 2 players to play"
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.start()))
+
 
 @bot.command()
 async def deal(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant deal if there isnt a game")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You cant deal if there isnt a game"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You need to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You need to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state != GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have already dealt for this round")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have already dealt for this round"
+        )
         await ctx.send(embed=e)
         return
     if GAME.dealer.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You arent the dealer, please wait for {} to ?deal".format(GAME.dealer.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "You arent the dealer, please wait for {} to ?deal".format(
+                GAME.dealer.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.deal_hands()))
@@ -2039,97 +2106,166 @@ async def deal(ctx):
         if player.user.dm_channel == None:
             await player.user.create_dm()
         channel = player.user.dm_channel
-        await channel.send("Your cards:\n{}{} / {}{}".format(cards[0].suit, cards[0].rank, cards[1].suit, cards[1].rank))
+        await channel.send(
+            "Your cards:\n{}{} / {}{}".format(
+                cards[0].suit, cards[0].rank, cards[1].suit, cards[1].rank
+            )
+        )
+
 
 @bot.command()
 async def call(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to call!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to be in the game to call!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant call yet".format(GAME.current_player.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Its currently {}'s turn, you cant call yet".format(
+                GAME.current_player.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.call()))
+
 
 @bot.command()
 async def check(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to check!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to be in the game to check!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant check yet".format(GAME.current_player.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Its currently {}'s turn, you cant check yet".format(
+                GAME.current_player.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.cur_bet != GAME.cur_bet:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant check yet, you have only bet ${} out of ${}".format(GAME.current_player.cur_bet, GAME.cur_bet))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "You cant check yet, you have only bet ${} out of ${}".format(
+                GAME.current_player.cur_bet, GAME.cur_bet
+            ),
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.check()))
+
 
 @bot.command(aliases=["raise"])
 async def raise_bet(ctx, amount: int):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to raise!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to be in the game to raise!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant raise yet".format(GAME.current_player.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Its currently {}'s turn, you cant raise yet".format(
+                GAME.current_player.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     try:
         if GAME.cur_bet >= GAME.current_player.max_bet:
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You dont have enough money to raise the current bet of ${}".format(GAME.cur_bet))
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Poker Game",
+                "You dont have enough money to raise the current bet of ${}".format(
+                    GAME.cur_bet
+                ),
+            )
             await ctx.send(embed=e)
             return
         if GAME.cur_bet + amount > GAME.current_player.max_bet:
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You dont have enough money to raise by ${}, the most you can raise by is ${}".format(amount, GAME.current_player.max_bet - GAME.cur_bet))
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Poker Game",
+                "You dont have enough money to raise by ${}, the most you can raise by is ${}".format(
+                    amount, GAME.current_player.max_bet - GAME.cur_bet
+                ),
+            )
             await ctx.send(embed=e)
             return
         await ctx.send("\n".join(GAME.raise_bet(amount)))
     except ValueError:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Please raise by an integer amount")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Please raise by an integer amount"
+        )
         await ctx.send(embed=e)
         return
 
@@ -2138,32 +2274,51 @@ async def raise_bet(ctx, amount: int):
 async def fold(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to fold!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to be in the game to fold!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant fold yet".format(GAME.current_player.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Its currently {}'s turn, you cant fold yet".format(
+                GAME.current_player.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.fold()))
+
 
 @bot.command()
 async def chips(ctx):
     global GAME
     if GAME.state in (GameState.NO_GAME, GameState.WAITING):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You cant request the chip count before the game has begun")
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "You cant request the chip count before the game has begun",
+        )
         await ctx.send(embed=e)
         return
     message: str = ""
@@ -2172,30 +2327,46 @@ async def chips(ctx):
     e: discord.Embed = compose_embed(0xFF00FF, "Poker Game", message)
     await ctx.send(embed=e)
 
+
 @bot.command()
 async def allin(ctx):
     global GAME
     if GAME.state == GameState.NO_GAME:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Theres currently not a game going on! ?poker"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.WAITING:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to start the game first!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to start the game first!"
+        )
         await ctx.send(embed=e)
         return
     if not GAME.is_player(ctx.author):
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You have to be in the game to go all in!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "You have to be in the game to go all in!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.state == GameState.NO_HANDS:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!")
+        e: discord.Embed = compose_embed(
+            0xFF0000, "Poker Game", "Cards havent been dealt yet, calm down!"
+        )
         await ctx.send(embed=e)
         return
     if GAME.current_player.user != ctx.author:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Its currently {}'s turn, you cant go all in yet".format(GAME.current_player.user.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Its currently {}'s turn, you cant go all in yet".format(
+                GAME.current_player.user.name
+            ),
+        )
         await ctx.send(embed=e)
         return
     await ctx.send("\n".join(GAME.all_in()))
+
 
 @bot.command()
 async def endgame(ctx):
@@ -2204,21 +2375,46 @@ async def endgame(ctx):
     if is_admin:
         GAME.players = []
         if GAME.state == GameState.WAITING:
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Game ended before it began. Make up your mind before you waste my time alright?")
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Poker Game",
+                "Game ended before it began. Make up your mind before you waste my time alright?",
+            )
             await ctx.send(embed=e)
         elif GAME.state in (GameState.NO_HANDS, GameState.HANDS_DEALT):
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Fun's over! Nothing to see here, people!")
+            e: discord.Embed = compose_embed(
+                0xFF0000, "Poker Game", "Fun's over! Nothing to see here, people!"
+            )
             await ctx.send(embed=e)
-        elif GAME.state in (GameState.FLOP_DEALT, GameState.TURN_DEALT, GameState.RIVER_DEALT):
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Fun's over! Put down that deck of cards! Don't you dare deal anything!")
+        elif GAME.state in (
+            GameState.FLOP_DEALT,
+            GameState.TURN_DEALT,
+            GameState.RIVER_DEALT,
+        ):
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Poker Game",
+                "Fun's over! Put down that deck of cards! Don't you dare deal anything!",
+            )
             await ctx.send(embed=e)
         else:
-            e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "You just tried to end a game that wasnt even started yet, didnt you? Monster.")
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Poker Game",
+                "You just tried to end a game that wasnt even started yet, didnt you? Monster.",
+            )
             await ctx.send(embed=e)
         GAME.state = GameState.NO_GAME
     else:
-        e: discord.Embed = compose_embed(0xFF0000, "Poker Game", "Nice try {}, but you dont look like an admin to me, and I dont take orders from plebs.".format(ctx.author.name))
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Poker Game",
+            "Nice try {}, but you dont look like an admin to me, and I dont take orders from plebs.".format(
+                ctx.author.name
+            ),
+        )
         await ctx.send(embed=e)
+
 
 @bot.command()
 async def leave(ctx):
@@ -2233,181 +2429,320 @@ async def leave(ctx):
             if player.user.name == usr:
                 GAME.players.pop(i)
                 if len(GAME.players) == 0:
-                	GAME.players = []
-                	GAME.state = GameState.NO_GAME
-                	await ctx.send("Congrats, you just killed a game you started for no reason! Have you no consideration for the cycles you just wasted?")
+                    GAME.players = []
+                    GAME.state = GameState.NO_GAME
+                    await ctx.send(
+                        "Congrats, you just killed a game you started for no reason! Have you no consideration for the cycles you just wasted?"
+                    )
                 if len(GAME.players) > 1:
                     GAME.pot.handle_fold(player)
                     GAME.leave_hand(player)
                     try:
                         if GAME.turn_index > len(GAME.in_hand):
-                            GAME.turn_index = len(GAME.in_hand)-1
+                            GAME.turn_index = len(GAME.in_hand) - 1
                         if GAME.dealer_index > len(GAME.players):
-                        	GAME.dealer_index = len(GAME.players)-1
+                            GAME.dealer_index = len(GAME.players) - 1
                     except:
-                        print("******************[!] EXCEPTION TRYING TO SET INDICES [!]******************")
-                    await ctx.send("**{}** Dropped out!\n**{}** is dealer and its **{}'s** turn!\n".format(usr, GAME.players[GAME.dealer_index].user.mention,GAME.in_hand[GAME.turn_index].user.mention))
+                        print(
+                            "******************[!] EXCEPTION TRYING TO SET INDICES [!]******************"
+                        )
+                    await ctx.send(
+                        "**{}** Dropped out!\n**{}** is dealer and its **{}'s** turn!\n".format(
+                            usr,
+                            GAME.players[GAME.dealer_index].user.mention,
+                            GAME.in_hand[GAME.turn_index].user.mention,
+                        )
+                    )
                 elif len(GAME.players) == 1:
                     if GAME.state == GameState.WAITING:
                         GAME.state = GameState.NO_GAME
-                        await ctx.send("Woops! Looks like **{}** dosen't wanna play after all!".format(usr))
+                        await ctx.send(
+                            "Woops! Looks like **{}** dosen't wanna play after all!".format(
+                                usr
+                            )
+                        )
                     else:
                         GAME.state = GameState.NO_GAME
-                        await ctx.send("**{}** wins the game due to the forfeit of {}".format(GAME.players[0].user.mention, usr))
+                        await ctx.send(
+                            "**{}** wins the game due to the forfeit of {}".format(
+                                GAME.players[0].user.mention, usr
+                            )
+                        )
             else:
-                i+=1
+                i += 1
         await ctx.send("You're not even in the game {}".format(ctx.author.mention))
+
 
 @bot.command(aliases=["lb"])
 async def leaderboard(ctx, ranking: str = ""):
     global DATABASE
-    rankings: list = [
-        "xp",
-        "balance",
-        "cookies",
-    ]
+    rankings: list = ["xp", "balance", "cookies"]
     if ranking not in rankings:
-        e: discord.Embed = compose_embed(0xFF0000, "Leaderboard", "Please provide one of the following ranking qualifiers")
+        e: discord.Embed = compose_embed(
+            0xFF0000,
+            "Leaderboard",
+            "Please provide one of the following ranking qualifiers",
+        )
         for rank in rankings:
             e.add_field(name="Ranking", value=rank, inline=False)
         await ctx.send(embed=e)
         return
-    if ranking == "cookies": ranking = "cookies_got"
+    if ranking == "cookies":
+        ranking = "cookies_got"
     users: list = DATABASE.get_users()
-    users.sort(key = lambda user: int(user.getprop(ranking)), reverse=True)
-        
-    e: discord.Embed = compose_embed(0xFFFF00, "{} Leaderboard".format(ranking), "Users registered: {}".format(len(users)))
+    users.sort(key=lambda user: int(user.getprop(ranking)), reverse=True)
+
+    e: discord.Embed = compose_embed(
+        0xFFFF00,
+        "{} Leaderboard".format(ranking),
+        "Users registered: {}".format(len(users)),
+    )
     placement: int = 1
     for user in users:
         u = ctx.message.guild.get_member(int(user.getprop("id")))
-        e.add_field(name="{} {}".format(placement, u.name), value="{}{} {}".format("¤" if ranking == "balance" else "", user.getprop(ranking), ranking.replace("_got", "") if ranking != "balance" else ""), inline=False)
+        e.add_field(
+            name="({}):\t{}, Level {}".format(placement, u.name, user.getprop("level")),
+            value="{}{} {}".format(
+                "¤" if ranking == "balance" else "",
+                user.getprop(ranking),
+                ranking.replace("_got", "") if ranking != "balance" else "",
+            ),
+            inline=False,
+        )
         placement += 1
     await ctx.send(embed=e)
 
-
-# RPG commands implemented below this line - Currently disabled
-"""
-@bot.command(aliases=["newchar", "nc"])
-async def newcharacter(ctx, name: str = "", archetype: int = -1):
-    global RPGCTRL
-
-    if name == "" or archetype == -1 or archetype > 4:
-        e = compose_embed(
-            0xFF0000,
-            "You must choose a class and name to make a character! (?newcharacter <name> <class>)",
-            "Please use the number next to a class to select it",
-        )
-        rpghelp: discord.Embed = discord.Embed(
-            title="CN RPG", description="Possible classes:", color=0xFF00FF
-        )
-        rpghelp.add_field(
-            name="0 | Mage", value="High damage, low defense", inline=False
-        )
-        rpghelp.add_field(
-            name="1 | Warrior", value="Middle damage, high defense", inline=False
-        )
-        rpghelp.add_field(
-            name="2 | Ranger", value="High damage, middle defense", inline=False
-        )
-        rpghelp.add_field(
-            name="3 | Rogue", value="High damage, low defense, high crit", inline=False
-        )
-        rpghelp.add_field(
-            name="4 | Priest",
-            value="Low damage, high defense, gets healing",
-            inline=False,
-        )
+@bot.command()
+async def dungeon(ctx, dungeon_level: int = -1):
+    global DATABASE
+    global GENERATOR
+    if dungeon_level < 0 or dungeon_level > 10:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "Please choose a dungeon between 0 and 10!\nNB: Boss level is 10 times the dungeon level")
         await ctx.send(embed=e)
-        await ctx.send(embed=rpghelp)
         return
+    item = None
+    boss = GENERATOR.generate_boss(dungeon_level)
+    char = DATABASE.get_character(ctx.author.id)
+    success: bool = (
+        (int(char["LV"]) - dungeon_level*10) + (int(char["ATK"]) - int(boss["DEF"])) - (int(boss["ATK"]) - int(char["DEF"]))
+        ) + int(char["LUCK"]) > 0
+    if success:
+        item_dropped: bool = random.randint(0, 10) + int(float(char["LUCK"])) % 5000 > 7
+        cash_reward: int = random.randint(dungeon_level * 1000, dungeon_level * 2000) + random.randint(100, 2000)
+        xp_reward: int = random.randint(dungeon_level * 400, dungeon_level * 800) + random.randint(50, 200)
+        if item_dropped:
+            item = GENERATOR.random_item(int(char["LUCK"]) + (dungeon_level*15))
+        DATABASE.update_db(ctx.author.id, cash_reward, False, False)
+        DATABASE.update_db(ctx.author.id, xp_reward, False, False, True)
+        if item != None: 
+            DATABASE.add_item(ctx.author.id, item)
+            color = 0xFFFFFF
+            if item["rarity"] == "Artifact":
+                color = 0x00FFFF
+            if item["rarity"] == "Legendary":
+                color = 0xAA8800
+            if item["rarity"] == "Epic":
+                color = 0xFF00FF
+            if item["rarity"] == "Rare":
+                color = 0x0000FF
+            if item["rarity"] == "Uncommon":
+                color = 0x00FF00
+            e: discord.Embed = compose_embed(color, "Neat RPG", "{} got the {} drop {}!\nATK: {}\nDEF: {}\nLUCK: {}".format(ctx.message.author.name, item["rarity"], item["name"], item["ATK"], item["DEF"], item["LUCK"]))
+            await ctx.send(embed=e)
+        e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "You beat the level {} boss {} and gained:\n¤{} and {}xp!".format(dungeon_level*10, boss["name"], cash_reward, xp_reward))
+        await ctx.send(embed=e)
     else:
-        register_success = RPGCTRL.NewCharacter(ctx.message.author, name, archetype)
-        if register_success == None:
-            e = compose_embed(
-                0xFF0000,
-                "Error registering character",
-                "Please try again later | Contact an administrator",
-            )
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "The level {} boss {} obliterated your feeble body!".format(dungeon_level*10, boss["name"]))
+        await ctx.send(embed=e)
+
+@bot.command()
+async def sheet(ctx, user: discord.User = None):
+    global DATABASE
+    if user == None:
+        user = ctx.author
+    user_data = DATABASE.get_player_data(user.id)
+    weapon_data = json.loads(user_data["weapon"])
+    armor_data = json.loads(user_data["armor"])
+    header: str = "[{}] {}".format(user_data["level"], user.name)
+    message: str = "¤{} / {}xp\n\nATK:\t{} / DEF:\t{} / LUCK:\t{}\n\nWeapon: {}\t#{} - ({}/{}/{})\n\nArmor: {}\t#{} - ({}/{}/{})".format(
+        user_data["balance"], 
+        user_data["xp"], 
+        user_data["rpg_attack"], 
+        user_data["rpg_defense"], 
+        user_data["rpg_luck"], 
+        weapon_data["name"],
+        weapon_data["rarity"],
+        weapon_data["ATK"],
+        weapon_data["DEF"],
+        weapon_data["LUCK"],
+        armor_data["name"],
+        armor_data["rarity"],
+        armor_data["ATK"],
+        armor_data["DEF"],
+        armor_data["LUCK"],
+    )
+    e: discord.Embed = compose_embed(0xFF00FF, header, message)
+    await ctx.send(embed=e)
+
+@bot.command(aliases=["inv"])
+async def inventory(ctx, user: discord.User = None):
+    global DATABASE
+    u = user
+    if user == None:
+        u = ctx.author
+    inventory = DATABASE.get_inventory(u.id)
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "{}'s inventory : [{}/16]".format(u.name, len(inventory)))
+    i = 0
+    for item in inventory:
+        unpacked = json.loads(item)
+        e.add_field(name="(EquipID: {}) {}\t#{}".format(i, unpacked["name"], unpacked["rarity"]), value="({}/{}/{})".format(unpacked["ATK"], unpacked["DEF"], unpacked["LUCK"]), inline=False)
+        i += 1
+    await ctx.send(embed=e)
+
+@bot.command()
+async def equip(ctx, equipid: int):
+    global DATABASE
+    max_id = len(DATABASE.get_inventory(ctx.author.id)) -1
+    equipped_weapon: bool = True
+    if equipid > max_id or equipid < 0:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You cant equip an item you dont have!")
+        await ctx.send(embed=e)
+        return
+    equipped_weapon = DATABASE.update_inventory(ctx.author.id, equipid)
+    item = None
+    if equipped_weapon:
+        item = json.loads(DATABASE.get_player_data(ctx.author.id)["weapon"])["name"]
+    else:
+        item = json.loads(DATABASE.get_player_data(ctx.author.id)["armor"])["name"]
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Successfully equipped {}!".format(item))
+    await ctx.send(embed=e)
+
+@bot.command()
+async def sell(ctx, equipid: int):
+    global DATABASE
+    max_id = len(DATABASE.get_inventory(ctx.author.id)) -1
+    if equipid > max_id or equipid < 0:
+        e: discord.Embed  = compose_embed(0xFF0000, "Neat RPG", "You cant sell an item you dont have!")
+        await ctx.send(embed=e)
+        return
+    tmp = DATABASE.sell_item(ctx.author.id, equipid)
+    print(tmp)
+    item: dict = tmp[1]
+    value: int = tmp[0]
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Sold {}\t#{} for ¤{}!".format(item["name"], item["rarity"], value))
+    await ctx.send(embed=e)
+
+@bot.command()
+async def raid(ctx, flag = ""):
+    global DATABASE
+    global GENERATOR
+    global RAID_PLAYERS
+    global RAID_BOSS
+    if RAID_PLAYERS == [] and flag == "":
+        RAID_BOSS = GENERATOR.generate_raid_boss()
+        RAID_PLAYERS.append(ctx.author)
+        e: discord.Embed = compose_embed(0xAA8800, "Raid Boss! ?raid", "You face the great {} {}!\n\nATK   {}\t\t\tDEF   {}".format(RAID_BOSS["name"], RAID_BOSS["suffix"], RAID_BOSS["ATK"], RAID_BOSS["DEF"]))
+        await ctx.send(embed=e)
+        return
+    elif RAID_PLAYERS != [] and flag == "":
+        if ctx.author in RAID_PLAYERS:
+            e: discord.Embed = compose_embed(0xFF0000, "Raid Boss! ?raid", "You're already in the raid!")
             await ctx.send(embed=e)
             return
         else:
-            e = compose_embed(
-                0x00FF00,
-                "Congratulations!",
-                "You have been given a set of starting gear as a welcome gift!",
-            )
+            e: discord.Embed = compose_embed(0x00FF00, "Raid Boss! ?raid", "{} joined the raid!".format(ctx.author.name))
             await ctx.send(embed=e)
+            RAID_PLAYERS.append(ctx.author)
             return
+    if flag == "start":
+        combined_level: int = 0
+        combined_attack: int = 0
+        combined_defense: int = 0
+        for player in RAID_PLAYERS:
+            player_data: dict = DATABASE.get_character(player.id)
+            combined_level += int(float(player_data["LV"]))
+            combined_attack += int(float(player_data["ATK"]))
+            combined_defense += int(float(player_data["DEF"]))
+        success: bool = ((combined_level) - 200) + (combined_attack - int(RAID_BOSS["DEF"])) - (int(RAID_BOSS["ATK"]) - combined_defense) > 0
+        if success:
+            Drops: discord.Embed = compose_embed(0x00FF00, "Raid Boss Defeated", "Your combined might of\nLevel: {} / ATK: {} / DEF: {}\n Easily overpowered the boss!".format(combined_level, combined_attack, combined_defense))
+            for player in RAID_PLAYERS:
+                if random.randint(0, 5) > 3:
+                    item = GENERATOR.random_item(13500 + int(float(DATABASE.get_character(player.id)["LUCK"])))
+                    e: discord.Embed = compose_embed(0x000000, "Raid Drop", "{} got the {}\t#{}!\n({}/{}/{})".format(player.name, item["name"], item["rarity"], item["ATK"], item["DEF"], item["LUCK"]))
+                    DATABASE.add_item(player.id, item)
+                    await ctx.send(embed=e)
+                cash_reward: int = random.randint(50000, 250000)
+                xp_reward: int = random.randint(5000, 25000)
+                Drops.add_field(name="Raid Loot", value="{} got ¤{} and {}xp for participating in the raid!".format(player.name, cash_reward, xp_reward), inline=False)
+                DATABASE.update_db(player.id, cash_reward, False, False)
+                DATABASE.update_db(player.id, xp_reward, False, False, True)
+            await ctx.send(embed=Drops)
+        else:
+            e: discord.Embed = compose_embed(0x00FF00, "Raid Boss Wipe", "Your puny might of\nLevel: {} / ATK: {} / DEF: {}\n was easily squished by the boss!".format(combined_level, combined_attack, combined_defense))
+            await ctx.send(embed=e)
+        RAID_PLAYERS = []
+        RAID_BOSS = {}
 
 
 @bot.command()
-async def profile(ctx):
-    global RPGCTRL
-
-    i = 0
-    character = None
-    for i in range(RPGCTRL.cptr):
-        if str(RPGCTRL.characters[i].owner) == str(ctx.message.author.id):
-            character = RPGCTRL.characters[i]
-            break
-    if character == None:
-        e = compose_embed(
-            0xFF0000,
-            "You must have a character to check your profile",
-            "Try doing ?nc!",
-        )
+async def trade(ctx, user: discord.User, eid: int = -1, reid: int = -1):
+    global DATABASE
+    if eid == -1 or reid == -1:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You must supply equipment ids for both items!")
         await ctx.send(embed=e)
         return
-    archetype = ""
-    if character.archetype == -1:
-        archetype = "Divine Being"
-    if character.archetype == 0:
-        archetype = "Mage"
-    if character.archetype == 1:
-        archetype = "Warrior"
-    if character.archetype == 2:
-        archetype = "Ranger"
-    if character.archetype == 3:
-        archetype = "Rogue"
-    if character.archetype == 4:
-        archetype = "Priest"
-    nextLevel: int = character.level +1
-    if nextLevel == 31:
-        nextLevel = 30
-    prof: discord.Embed = discord.Embed(
-        title="{}, Level {} {}".format(character.name, character.level, archetype),
-        description="XP: {}, Left to next level: {}".format(
-            character.xp, RPG.RPG_Level_Requirements[nextLevel] - character.xp
-        ),
-        color=0xFFFFFF,
-    )
-    prof.add_field(
-        name="Stats",
-        value="ATK: {}\nDEF: {}\nHP: {}\nCRIT: {}".format(
-            character.stats["ATK"],
-            character.stats["DEF"],
-            character.stats["HP"],
-            character.stats["CRIT"],
-        ),
-        inline=False,
-    )
-    prof.add_field(
-        name="Main Hand: {}".format(character.equipment["MH"].item_name),
-        value="{}".format(character.equipment["MH"].item_description),
-        inline=False,
-    )
-    prof.add_field(
-        name="Off Hand: {}".format(character.equipment["OH"].item_name),
-        value="{}".format(character.equipment["OH"].item_description),
-        inline=False,
-    )
-    prof.add_field(
-        name="Armor: {}".format(character.equipment["ARM"].item_name),
-        value="{}".format(character.equipment["ARM"].item_description),
-        inline=False,
-    )
-    await ctx.send(embed=prof)
-    return
-"""
+    if user.id == ctx.author.id:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You cant trade yourself!")
+        await ctx.send(embed=e)
+        return
+    success: bool = DATABASE.add_trade(ctx.author.id, user.id, eid, reid)
+    if success:
+        e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Sent trade request to {}!".format(user.id))
+        await ctx.send(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "Something went wrong!")
 
-bot.run(TOKEN)
+@bot.command()
+async def trades(ctx):
+    global DATABASE
+    trades : list = DATABASE.get_trades(ctx.author.id)
+    e: discord.Embed = compose_embed(0xFF9922, "Neat RPG", "Trade Requests")
+    tid: int = 0
+    idx: int = 0
+    for idx in range(len(trades)):
+        trade: dict = trades[idx]
+        e.add_field(name="({}) {}".format(tid, trade["player_id"]), value="{}#{} ({}/{}/{})\nFOR\n{}#{} ({}/{}/{})".format(trade["item0"]["name"], trade["item0"]["rarity"], trade["item0"]["ATK"], trade["item0"]["DEF"], trade["item0"]["LUCK"], trade["item1"]["name"], trade["item1"]["rarity"], trade["item1"]["ATK"], trade["item1"]["DEF"], trade["item1"]["LUCK"]), inline=False)
+    await ctx.send(embed=e)
+
+@bot.command()
+async def accept(ctx, tid: int):
+    global DATABASE
+    trades = DATABASE.get_trades(ctx.author.id)
+    if tid >= 0 and tid < len(trades):
+        success: bool = DATABASE.resolve_trade(ctx.author.id, tid, True)
+        if success:
+            e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Accepted trade #{}!".format(tid))
+            await ctx.send(embed=e)
+        else:
+            e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "Something went wrong trying to accept that trade!")
+            await ctx.send(embed=e)
+    else:
+        await ctx.send(embed=compose_embed(0xFF0000, "Neat RPG", "You cant resolve a nonexistant trade!"))
+
+@bot.command()
+async def decline(ctx, tid: int):
+    global DATABASE
+    trades = DATABASE.get_trades(ctx.author.id)
+    if tid >= 0 and tid < len(trades):
+        success: bool = DATABASE.resolve_trade(ctx.author.id, tid, False)
+        if success:
+            e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Declined trade #{}!".format(tid))
+            await ctx.send(embed=e)
+        else:
+            e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "Something went wrong trying to accept that trade!")
+            await ctx.send(embed=e)
+    else:
+        await ctx.send(embed=compose_embed(0xFF0000, "Neat RPG", "You cant resolve a nonexistant trade!"))
+
+bot.run(TOKEN) # E O F ==========================================================================================================
