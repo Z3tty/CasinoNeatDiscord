@@ -1,24 +1,46 @@
 class CNDBUser:
-    def __init__ (self):
+    def __init__(self):
         self.properties: list = [
             "id",
             "balance",
             "xp",
+            "level",
             "last_daily",
             "daily_streak",
             "cookies_sent",
             "cookies_got",
             "thefts_failed",
+            "rpg_attack",
+            "rpg_defense",
+            "rpg_luck",
+            "weapon",
+            "armor",
+            "ring",
+            "neck",
+            "accessory",
+            "inv",
+            "trade_requests",
         ]
         self.data: dict = {
-            "id":None,
-            "balance":None,
-            "xp":None,
-            "last_daily":None,
-            "daily_streak":None,
-            "cookies_sent":None,
-            "cookies_got":None,
-            "thefts_failed":None,
+            "id": None,
+            "balance": None,
+            "xp": None,
+            "level": None,
+            "last_daily": None,
+            "daily_streak": None,
+            "cookies_sent": None,
+            "cookies_got": None,
+            "thefts_failed": None,
+            "rpg_attack": None,
+            "rpg_defense": None,
+            "rpg_luck": None,
+            "weapon": None,
+            "armor": None,
+            "ring":None,
+            "neck":None,
+            "accessory":None,
+            "inv": None,
+            "trade_requests": None,
         }
 
     def getall(self) -> dict:
@@ -38,7 +60,7 @@ class CNDBUser:
             print("CNDBUser :: NoSuchProperty Error -> {}".format(property))
             return
         self.data[property] = value
-    
+
     def empty(self) -> bool:
         for key in self.data:
             if self.data[key] != None:
