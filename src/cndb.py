@@ -13,7 +13,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from cn_globals import *
+from cn_globals import DB, DAILY_BONUS, DAILY_STREAK_SCALAR, HAS_CHANGED_DB
 import discord
 import random
 from colorama import init
@@ -46,12 +46,6 @@ class CNDatabase:
                     u.setall(json.loads(line))
                     if not u.empty():
                         self._db_map.append(u)
-                        print(
-                            B.BLUE
-                            + F.WHITE
-                            + "CNDB::Pull->Read user {}".format(u.getall())
-                            + S.RESET_ALL
-                        )
                         self._db_map_index += 1
                     line = db.readline()
                 except StopIteration:
