@@ -13,35 +13,111 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from colorama import init; print("[Loaded colorama::init]")
-from colorama import Fore as F; print("[Loaded colorama::Fore]")
-from colorama import Style as S; print("[Loaded colorama::Style]")
-from colorama import Back as B; print("[Loaded colorama::Back]")
-init(); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized colorama]")
-import asyncio; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded asyncio]")
-import discord; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord]")
-from discord.ext import commands; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord::commands]")
-from discord.ext.commands import CommandNotFound; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord::commands::CommandNotFound]")
-from discord.voice_client import VoiceClient; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord::VoiceClient]")
-from datetime import datetime; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded datetime::datetime]")
-import random; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded random]")
-import logging; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded logging]")
+from colorama import init
 
-from cn_globals import RIGGED, DB, AUTHOR, VERSION, SILENT, RANDOM_EVENT_AMOUNT, RANDOM_EVENT_CURRENTLY, CRATE_GIVES_XP, CRATE_REWARD_AMOUNT, CRATE_SPAWNED, FILTER_BOTS, FILTER_LOGS, FILTER_USERS, DB_PUSH_TIMEOUT, FINE_AMOUNT, BRIBE_PRICE, LOTTO_REWARD, DAILY_BONUS, TOKEN
+print("[Loaded colorama::init]")
+from colorama import Fore as F
+
+print("[Loaded colorama::Fore]")
+from colorama import Style as S
+
+print("[Loaded colorama::Style]")
+from colorama import Back as B
+
+print("[Loaded colorama::Back]")
+init()
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized colorama]")
+import asyncio
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded asyncio]")
+import discord
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord]")
+from discord.ext import commands
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord::commands]")
+from discord.ext.commands import CommandNotFound
+
+print(
+    S.BRIGHT
+    + F.GREEN
+    + "[OK]\t"
+    + S.RESET_ALL
+    + "[Loaded discord::commands::CommandNotFound]"
+)
+from discord.voice_client import VoiceClient
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded discord::VoiceClient]")
+from datetime import datetime
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded datetime::datetime]")
+import random
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded random]")
+import logging
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded logging]")
+
+from cn_globals import (
+    RIGGED,
+    DB,
+    AUTHOR,
+    VERSION,
+    SILENT,
+    RANDOM_EVENT_AMOUNT,
+    RANDOM_EVENT_CURRENTLY,
+    CRATE_GIVES_XP,
+    CRATE_REWARD_AMOUNT,
+    CRATE_SPAWNED,
+    FILTER_BOTS,
+    FILTER_LOGS,
+    FILTER_USERS,
+    DB_PUSH_TIMEOUT,
+    FINE_AMOUNT,
+    BRIBE_PRICE,
+    LOTTO_REWARD,
+    DAILY_BONUS,
+    TOKEN,
+)
+
 print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded cn_globals]")
-import cndb; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded cndb]")
-from RPG import Generator; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded RPG::Generator]")
-from collections import namedtuple; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded collections::namedtuple]")
-import os; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded os]")
-from typing import Dict, List; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded typing::Dict]"); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded typing::List]")
-from subprocess import Popen; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded subprocess::Popen]")
-import json; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded json]")
-from game import Game, GAME_OPTIONS, GameState; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::Game]"); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::GAME_OPTIONS]"); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::GameState]")
-import pot; print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded pot]")
+import cndb
 
-DATABASE = cndb.CNDatabase(); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Database]")
-GENERATOR = Generator(); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Generator]")
-GAME: Game = Game(); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Game]")
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded cndb]")
+from RPG import Generator
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded RPG::Generator]")
+from collections import namedtuple
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded collections::namedtuple]")
+import os
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded os]")
+from typing import Dict, List
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded typing::Dict]")
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded typing::List]")
+from subprocess import Popen
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded subprocess::Popen]")
+import json
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded json]")
+from game import Game, GAME_OPTIONS, GameState
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::Game]")
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::GAME_OPTIONS]")
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded game::GameState]")
+import pot
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded pot]")
+
+DATABASE = cndb.CNDatabase()
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Database]")
+GENERATOR = Generator()
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Generator]")
+GAME: Game = Game()
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Game]")
 DATABASE.pull()
 
 RAID_PLAYERS = []
@@ -51,10 +127,18 @@ RAID_BOSS = {}
 logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.WARNING)
 logging.basicConfig(level=logging.ERROR)
-logging.basicConfig(level=logging.CRITICAL); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Set logging to INFO|WARNING|ERROR|CRITICAL]")
+logging.basicConfig(level=logging.CRITICAL)
+print(
+    S.BRIGHT
+    + F.GREEN
+    + "[OK]\t"
+    + S.RESET_ALL
+    + "[Set logging to INFO|WARNING|ERROR|CRITICAL]"
+)
 
 # Bot setup, and global variables that make things easier for me
-bot = commands.Bot(command_prefix="?", case_insensitive=True); print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Bot]")
+bot = commands.Bot(command_prefix="?", case_insensitive=True)
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Initialized Bot]")
 
 # Helper function. Sends a debug message to the console. Used to standardize input and make changes easier, and debugs clearer.
 def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
@@ -2539,7 +2623,9 @@ async def dungeon(ctx, dungeon_level: int = -1):
         - (int(boss["ATK"]) - int(char["DEF"]))
     ) + int(char["LUCK"]) > 0
     if success:
-        item_dropped: bool = random.randint(0, 15) + int(int(float(char["LUCK"])) % 10000) > 12
+        item_dropped: bool = random.randint(0, 15) + int(
+            int(float(char["LUCK"])) % 10000
+        ) > 12
         cash_reward: int = random.randint(
             dungeon_level * 1000, dungeon_level * 2000
         ) + random.randint(100, 2000)
@@ -2641,7 +2727,13 @@ async def sheet(ctx, user: discord.User = None):
     e: discord.Embed = compose_embed(0xFF00FF, header, message)
     pfp: str = user.avatar_url
     e.set_image(url=pfp)
-    e.add_field(name="Total Stats", value="ATK {} - DEF {} - LUCK {}".format(char_data["ATK"], char_data["DEF"], char_data["LUCK"]), inline=False)
+    e.add_field(
+        name="Total Stats",
+        value="ATK {} - DEF {} - LUCK {}".format(
+            char_data["ATK"], char_data["DEF"], char_data["LUCK"]
+        ),
+        inline=False,
+    )
     await ctx.send(embed=e)
 
 
@@ -2781,8 +2873,8 @@ async def raid(ctx, flag=""):
             for player in RAID_PLAYERS:
                 if random.randint(0, 5) > 3:
                     item = GENERATOR.random_item(
-                        13500 + int(float(DATABASE.get_character(player.id)["LUCK"])), 
-                        True
+                        13500 + int(float(DATABASE.get_character(player.id)["LUCK"])),
+                        True,
                     )
                     e: discord.Embed = compose_embed(
                         0x000000,
