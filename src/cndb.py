@@ -130,7 +130,7 @@ class CNDatabase:
         }
         new_user_inv: list = []
         new_user_trades: list = []
-        new_user_materials: dict = {"alpha":"0", "beta":"0", "gamma":"0"}
+        new_user_materials: dict = {"alpha": "0", "beta": "0", "gamma": "0"}
         new_user.setprop("id", userid)
         new_user.setprop("balance", "1000")
         new_user.setprop("xp", "0")
@@ -193,17 +193,20 @@ class CNDatabase:
                             if user.getprop("origin") == "2":
                                 stat_boost_luck = 50
                             if user.getprop("blessing") == "1":
-                                stat_boost_atk  = 300
-                                stat_boost_def  = 300
+                                stat_boost_atk = 300
+                                stat_boost_def = 300
                                 stat_boost_luck = 300
                             user.setprop(
-                                "rpg_attack", str(atk + random.randint(10, 100) + stat_boost_atk)
+                                "rpg_attack",
+                                str(atk + random.randint(10, 100) + stat_boost_atk),
                             )
                             user.setprop(
-                                "rpg_defense", str(defn + random.randint(10, 100) + stat_boost_def)
+                                "rpg_defense",
+                                str(defn + random.randint(10, 100) + stat_boost_def),
                             )
                             user.setprop(
-                                "rpg_luck", str(luck + random.randint(10, 100) + stat_boost_luck)
+                                "rpg_luck",
+                                str(luck + random.randint(10, 100) + stat_boost_luck),
                             )
                             old_level = level
                         tmp -= 1500 * level
@@ -360,7 +363,6 @@ class CNDatabase:
             user.setprop("thefts_failed", str(tmp + 1))
             self._db_map[index] = user
             return tmp + 1
-
 
     def get_character(self, uid) -> dict:
         user: CNDBUser = CNDBUser()
@@ -581,7 +583,7 @@ class CNDatabase:
         user_trades: list = self.get_trades(user.getprop("id"))
         recp_trades.append(t0)
         user_trades.append(t1)
-        
+
         recp.setprop("trade_requests", json.dumps(recp_trades))
         user.setprop("trade_requests", json.dumps(user_trades))
         return True
@@ -592,9 +594,9 @@ class CNDatabase:
             if u.getprop("id") == str(uid):
                 user = u
         if user.empty():
-            return      
+            return
         user.setprop(special, val)
-    
+
     def update_materials(self, uid, mtype: str, amount: int, sub: bool = False) -> bool:
         user: CNDBUser = CNDBUser()
         for u in self._db_map:
@@ -613,7 +615,7 @@ class CNDatabase:
         um[mtype] = str(m_amount)
         user.setprop("materials", json.dumps(um))
         return True
-    
+
     def get_materials(self, uid) -> dict:
         user: CNDBUser = CNDBUser()
         for u in self._db_map:
@@ -621,4 +623,4 @@ class CNDatabase:
                 user = u
         if user.empty():
             return False
-        return json.loads(user.getprop("materials"))    
+        return json.loads(user.getprop("materials"))

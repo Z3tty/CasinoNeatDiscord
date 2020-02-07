@@ -12,7 +12,7 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
-""" 
+"""
 import discord
 import random
 from colorama import init
@@ -49,13 +49,7 @@ Suffixes: list = [
     "of the Hunter",
     "of the Reaper",
 ]
-UniquePrefixes: list = [
-    "Heroic",
-    "Perfect",
-    "Cosmic",
-    "Ascended",
-    "Ancient",
-]
+UniquePrefixes: list = ["Heroic", "Perfect", "Cosmic", "Ascended", "Ancient"]
 UniqueSuffixes: list = [
     "of Evisceration",
     "of Obliteration",
@@ -117,12 +111,7 @@ NeckTypes: list = [
     "Crystal Necklace",
     "Crystal Amulet",
 ]
-AccTypes: list = [
-    "Hat",
-    "Shoes",
-    "Gloves",
-    "Belt",
-]
+AccTypes: list = ["Hat", "Shoes", "Gloves", "Belt"]
 Bosses: dict = {
     0: "Moo, the Cow",
     1: "Aatraloc the Damned",
@@ -153,7 +142,7 @@ Raids: dict = {
     "Penembrum": "of the Umbral Deep",
     "Olicarn": "of Song and Dance",
     "Azzidem": "of Corruption",
-    "Zadr": "the Solemn Primordial"
+    "Zadr": "the Solemn Primordial",
 }
 
 
@@ -447,18 +436,15 @@ class Generator:
         item: dict = {
             "name": name,
             "type": itemtype,
-            "rarity": "Unique", 
-            "ATK": atk, 
-            "DEF": defn, 
-            "LUCK": luck
-        }; return item
-    
-    def forge_item(self, mtype) -> dict:
-        item_sigs: dict = {
-            "alpha": "α",
-            "beta": "β",
-            "gamma": "γ",
+            "rarity": "Unique",
+            "ATK": atk,
+            "DEF": defn,
+            "LUCK": luck,
         }
+        return item
+
+    def forge_item(self, mtype) -> dict:
+        item_sigs: dict = {"alpha": "α", "beta": "β", "gamma": "γ"}
         signature: str = item_sigs[mtype]
         item_type_rng: int = random.randint(0, 4)
         item_name: str = "{} ".format(signature)
@@ -466,14 +452,14 @@ class Generator:
         ItemATK: int = 0
         ItemDEF: int = 0
         ItemLCK: int = 0
-        StatModifier: int = 1 if mtype == "alpha" else  2 if mtype == "beta" else 3 if mtype == "gamma" else 0
+        StatModifier: int = 1 if mtype == "alpha" else 2 if mtype == "beta" else 3 if mtype == "gamma" else 0
         if item_type_rng == 0:
             item_type = "WPN"
             item_name = "{} {} {} {}".format(
-                item_name, 
-                random.choice(UniquePrefixes), 
-                random.choice(WeaponTypes), 
-                random.choice(UniqueSuffixes)
+                item_name,
+                random.choice(UniquePrefixes),
+                random.choice(WeaponTypes),
+                random.choice(UniqueSuffixes),
             )
             ItemATK = random.randint(100000 * StatModifier, 200000 * StatModifier)
             ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
@@ -481,10 +467,10 @@ class Generator:
         if item_type_rng == 1:
             item_type = "ARM"
             item_name = "{} {} {} {}".format(
-                item_name, 
-                random.choice(UniquePrefixes), 
+                item_name,
+                random.choice(UniquePrefixes),
                 random.choice(ArmorTypes),
-                random.choice(UniqueSuffixes)
+                random.choice(UniqueSuffixes),
             )
             ItemDEF = random.randint(100000 * StatModifier, 200000 * StatModifier)
             ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
@@ -492,10 +478,10 @@ class Generator:
         if item_type_rng == 2:
             item_type = "RNG"
             item_name = "{} {} {} {}".format(
-                item_name, 
-                random.choice(UniquePrefixes), 
+                item_name,
+                random.choice(UniquePrefixes),
                 random.choice(RingTypes),
-                random.choice(UniqueSuffixes)
+                random.choice(UniqueSuffixes),
             )
             ItemLCK = random.randint(100000 * StatModifier, 200000 * StatModifier)
             ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
@@ -503,10 +489,10 @@ class Generator:
         if item_type_rng == 3:
             item_type = "NCK"
             item_name = "{} {} {} {}".format(
-                item_name, 
-                random.choice(UniquePrefixes), 
+                item_name,
+                random.choice(UniquePrefixes),
                 random.choice(NeckTypes),
-                random.choice(UniqueSuffixes)
+                random.choice(UniqueSuffixes),
             )
             ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
             ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
@@ -514,10 +500,10 @@ class Generator:
         if item_type_rng == 4:
             item_type = "ACC"
             item_name = "{} {} {} {}".format(
-                item_name, 
-                random.choice(UniquePrefixes), 
+                item_name,
+                random.choice(UniquePrefixes),
                 random.choice(AccTypes),
-                random.choice(UniqueSuffixes)
+                random.choice(UniqueSuffixes),
             )
             ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
             ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
@@ -525,8 +511,9 @@ class Generator:
         item: dict = {
             "name": item_name,
             "type": item_type,
-            "rarity": "Unique", 
-            "ATK": ItemATK, 
-            "DEF": ItemDEF, 
-            "LUCK": ItemLCK
-        }; return item
+            "rarity": "Unique",
+            "ATK": ItemATK,
+            "DEF": ItemDEF,
+            "LUCK": ItemLCK,
+        }
+        return item

@@ -26,7 +26,8 @@ class CNDBUser:
             "materials",
         ]
         self.data: dict = {}
-        for prop in self.properties: self.data[prop] = None
+        for prop in self.properties:
+            self.data[prop] = None
 
     def getall(self) -> dict:
         return self.data
