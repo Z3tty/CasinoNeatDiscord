@@ -1,4 +1,4 @@
-# DiscordDiceroller
+# Casino Neat Discord Bot
 A self-host (optimally single-server) discord bot with support for its own economy system, RPG system, gambling functionallity, organized poker games with its own seperate cash system and some basic moderation
 
 Go check out https://github.com/samcoppini/Discord-Poker-Bot! The poker functionality is based partly on this, just updated to merge well with v1.0 of the API (and some additional features I missed in it). The code is pretty cool and I'd advice anyone wanting to learn to go read through it.
