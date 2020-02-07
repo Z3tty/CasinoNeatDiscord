@@ -440,6 +440,11 @@ async def help(ctx):
     rpgmsg.add_field(name="?equip <id>", value="Equip an item", inline=False)
     rpgmsg.add_field(name="?sell <id>", value="Sell an item", inline=False)
     rpgmsg.add_field(name="?sheet", value="View your character data", inline=False)
+    rpgmsg.add_field(name="?origin", value="Choose an origin for your character (Lv. 5)", inline=False)
+    rpgmsg.add_field(name="?evocation", value="Gain a buff as reward for leveling (Lv. 25)", inline=False)
+    rpgmsg.add_field(name="?blessing", value="Gain a gods blessing as a reward for leveling (Lv. 50)", inline=False)
+    rpgmsg.add_field(name="?materials", value="View how many different materials you have", inline=False)
+    rpgmsg.add_field(name="?forge <type>", value="Forge a random piece of equipment based on a material (alpha, beta or gamma)", inline=False)
     adminmsg = discord.Embed(title="CN Admin commands", description="", color=0xFF0000)
     adminmsg.add_field(name="?debug", value="(ADMIN) DB debug command", inline=False)
     adminmsg.add_field(
