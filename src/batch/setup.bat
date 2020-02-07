@@ -5,7 +5,6 @@ set /p token=Please enter your bot token:
 echo Setting up directories ...
 mkdir enc
 mkdir DB
-mkdir rpgdata
 echo Done!
 echo Creating token file ...
 cd enc
