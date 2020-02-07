@@ -521,7 +521,7 @@ async def filter(ctx, f: str):
 async def silent(ctx):
     global SILENT
     is_admin: bool = ctx.message.author.top_role.permissions.administrator
-    if is_admin
+    if is_admin:
         SILENT = not SILENT
         await ctx.send("Bot silent mode: {}".format(SILENT))
     else:
