@@ -161,7 +161,7 @@ def debug_console_log(source: str, author: discord.User, msg: str = "") -> None:
 
 
 def compose_embed(color, name: str, content: str) -> discord.Embed:
-    msg = discord.Embed(title="CN Diceroller", description="", color=color)
+    msg = discord.Embed(title="CN Bot", description="", color=color)
     msg.add_field(name=name, value=content, inline=False)
     return msg
 
@@ -339,7 +339,7 @@ async def help(ctx):
         await ctx.message.author.create_dm()
         channel = ctx.message.author.dm_channel
         print(channel)
-    helpmsg = discord.Embed(title="CN Diceroller", description="", color=0xFF00FF)
+    helpmsg = discord.Embed(title="CN Bot", description="", color=0xFF00FF)
     helpmsg.add_field(
         name="?help",
         value="Displays this message.\nAlias=[h, info, commands, c]",
@@ -467,8 +467,9 @@ async def help(ctx):
     filters.add_field(name="none", value="Toggles all messages off", inline=False)
     await channel.send(embed=helpmsg)
     await channel.send(embed=rpgmsg)
-    await channel.send(embed=adminmsg)
-    await channel.send(embed=filters)
+    if ctx.message.author.top_role.permissions.administrator:
+        await channel.send(embed=adminmsg)
+        await channel.send(embed=filters)
 
 
 @bot.command()
@@ -519,9 +520,13 @@ async def filter(ctx, f: str):
 @bot.command()
 async def silent(ctx):
     global SILENT
-    SILENT = not SILENT
-    await ctx.send("Bot silent mode: {}".format(SILENT))
-    return
+    is_admin: bool = ctx.message.author.top_role.permissions.administrator
+    if is_admin
+        SILENT = not SILENT
+        await ctx.send("Bot silent mode: {}".format(SILENT))
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "CN Bot", "You dont look like an admin to me")
+        await ctx.send(embed=e)
 
 
 @bot.command()
@@ -1948,7 +1953,7 @@ async def order(ctx, drink: str = "empty"):
     drinks: list = ["beer", "cider", "wine", "vodka", "rum", "cognac", "whiskey"]
     prices: list = [500, 1000, 2500, 5000, 10000, 15000, 30000]
     if drink == "empty":
-        e = discord.Embed(title="CN Diceroller", description="", color=0x662200)
+        e = discord.Embed(title="CN Bot", description="", color=0x662200)
         e.add_field(
             name="What can I getcha?", value="I currently have ...", inline=False
         )
