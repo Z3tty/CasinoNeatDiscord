@@ -49,6 +49,20 @@ Suffixes: list = [
     "of the Hunter",
     "of the Reaper",
 ]
+UniquePrefixes: list = [
+    "Heroic",
+    "Perfect",
+    "Cosmic",
+    "Ascended",
+    "Ancient",
+]
+UniqueSuffixes: list = [
+    "of Evisceration",
+    "of Obliteration",
+    "of Decimation",
+    "of the God-Slayer",
+    "of the Dominator",
+]
 WeaponTypes: list = [
     "Sword",
     "Spear",
@@ -111,16 +125,26 @@ AccTypes: list = [
 ]
 Bosses: dict = {
     0: "Moo, the Cow",
-    10: "Aatraloc the Damned",
-    20: "Bercial the Hollow",
-    30: "Maptabat the Forsaken",
-    40: "Kuhg the Beast",
-    50: "Hagayu the Lost",
-    60: "Brahamiz the Storm",
-    70: "Kharzargaet of the Deep Seas",
-    80: "Jeex the Unyielding",
-    90: "Veztrec of Hellflame",
-    100: "Fuuree the Scourge",
+    1: "Aatraloc the Damned",
+    2: "Bercial the Hollow",
+    3: "Maptabat the Forsaken",
+    4: "Kuhg the Beast",
+    5: "Hagayu the Lost",
+    6: "Brahamiz the Storm",
+    7: "Kharzargaet of the Deep Seas",
+    8: "Jeex the Unyielding",
+    9: "Veztrec of Hellflame",
+    10: "Fuuree the Scourge",
+    11: "Baliel of the Dying Star",
+    12: "Petrax the Decieved",
+    13: "Puppet of Azzidem",
+    14: "Congregation of Olicarn",
+    15: "Beastmaster Oka",
+    16: "Umbral General Xee",
+    17: "Laine of the Burning Planes",
+    18: "Aptabus of the Neverending Wheel",
+    19: "Permafrost Dragon Vimia",
+    20: "Za'lem, Lord of the Cosmos",
 }
 
 Raids: dict = {
@@ -129,6 +153,7 @@ Raids: dict = {
     "Penembrum": "of the Umbral Deep",
     "Olicarn": "of Song and Dance",
     "Azzidem": "of Corruption",
+    "Zadr": "the Solemn Primordial"
 }
 
 
@@ -365,47 +390,143 @@ class Generator:
         return item
 
     def generate_boss(self, dungeon: int) -> dict:
-        if dungeon > 10:
+        if dungeon > 20 or dungeon < 0:
             return {None: None}
         if dungeon == 0:
             boss: dict = {"name": Bosses[0], "ATK": "5", "DEF": "5"}
             return boss
         boss: dict = {
-            "name": Bosses[(dungeon * 10)],
+            "name": Bosses[dungeon],
             "ATK": str(dungeon * 150 + (dungeon - 1) * 1000),
             "DEF": str(dungeon * 150 + (dungeon - 1) * 1000),
         }
-        if dungeon > 4:
+        if dungeon < 5:
             boss["ATK"] = str(int(boss["ATK"]) + dungeon * 2000)
             boss["DEF"] = str(int(boss["DEF"]) + dungeon * 2000)
-        if dungeon > 6:
+        elif dungeon < 7:
             boss["ATK"] = str(int(boss["ATK"]) + dungeon * 3000)
             boss["DEF"] = str(int(boss["DEF"]) + dungeon * 3000)
-        if dungeon > 8:
+        elif dungeon < 9:
             boss["ATK"] = str(int(boss["ATK"]) + dungeon * 4000)
             boss["DEF"] = str(int(boss["DEF"]) + dungeon * 4000)
+        elif dungeon < 13:
+            boss["ATK"] = str(int(boss["ATK"]) + dungeon * 5000)
+            boss["DEF"] = str(int(boss["DEF"]) + dungeon * 5000)
+        elif dungeon < 15:
+            boss["ATK"] = str(int(boss["ATK"]) + dungeon * 10000)
+            boss["DEF"] = str(int(boss["DEF"]) + dungeon * 10000)
+        elif dungeon < 17:
+            boss["ATK"] = str(int(boss["ATK"]) + dungeon * 15000)
+            boss["DEF"] = str(int(boss["DEF"]) + dungeon * 15000)
+        elif dungeon < 21:
+            boss["ATK"] = str(int(boss["ATK"]) + dungeon * 25000)
+            boss["DEF"] = str(int(boss["DEF"]) + dungeon * 25000)
         return boss
 
     def generate_raid_boss(self) -> dict:
         boss: int = random.randint(0, 4)
         BossInfo = {"name": "", "suffix": "", "ATK": "", "DEF": ""}
-        RaidAttack = 400000
-        RaidDefense = 400000
+        RaidAttack = 600000
+        RaidDefense = 600000
         if boss == 0:
             BossInfo["name"] = "Graax"
-            BossInfo["suffix"] = Raids["Graax"]
         if boss == 1:
             BossInfo["name"] = "Halyz"
-            BossInfo["suffix"] = Raids["Halyz"]
         if boss == 2:
             BossInfo["name"] = "Penembrum"
-            BossInfo["suffix"] = Raids["Penembrum"]
         if boss == 3:
             BossInfo["name"] = "Olicarn"
-            BossInfo["suffix"] = Raids["Olicarn"]
         if boss == 4:
             BossInfo["name"] = "Azzidem"
-            BossInfo["suffix"] = Raids["Azzidem"]
+        BossInfo["suffix"] = Raids[BossInfo["name"]]
         BossInfo["ATK"] = str(random.randint(RaidAttack, int(RaidAttack * 1.7)))
         BossInfo["DEF"] = str(random.randint(RaidDefense, int(RaidDefense * 1.7)))
         return BossInfo
+
+    def make_unique_item(self, name, itemtype, atk, defn, luck) -> dict:
+        item: dict = {
+            "name": name,
+            "type": itemtype,
+            "rarity": "Unique", 
+            "ATK": atk, 
+            "DEF": defn, 
+            "LUCK": luck
+        }; return item
+    
+    def forge_item(self, mtype) -> dict:
+        item_sigs: dict = {
+            "alpha": "α",
+            "beta": "β",
+            "gamma": "γ",
+        }
+        signature: str = item_sigs[mtype]
+        item_type_rng: int = random.randint(0, 4)
+        item_name: str = "{} ".format(signature)
+        item_type: str = ""
+        ItemATK: int = 0
+        ItemDEF: int = 0
+        ItemLCK: int = 0
+        StatModifier: int = 1 if mtype == "alpha" else  2 if mtype == "beta" else 3 if mtype == "gamma" else 0
+        if item_type_rng == 0:
+            item_type = "WPN"
+            item_name = "{} {} {} {}".format(
+                item_name, 
+                random.choice(UniquePrefixes), 
+                random.choice(WeaponTypes), 
+                random.choice(UniqueSuffixes)
+            )
+            ItemATK = random.randint(100000 * StatModifier, 200000 * StatModifier)
+            ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemLCK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+        if item_type_rng == 1:
+            item_type = "ARM"
+            item_name = "{} {} {} {}".format(
+                item_name, 
+                random.choice(UniquePrefixes), 
+                random.choice(ArmorTypes),
+                random.choice(UniqueSuffixes)
+            )
+            ItemDEF = random.randint(100000 * StatModifier, 200000 * StatModifier)
+            ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemLCK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+        if item_type_rng == 2:
+            item_type = "RNG"
+            item_name = "{} {} {} {}".format(
+                item_name, 
+                random.choice(UniquePrefixes), 
+                random.choice(RingTypes),
+                random.choice(UniqueSuffixes)
+            )
+            ItemLCK = random.randint(100000 * StatModifier, 200000 * StatModifier)
+            ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
+        if item_type_rng == 3:
+            item_type = "NCK"
+            item_name = "{} {} {} {}".format(
+                item_name, 
+                random.choice(UniquePrefixes), 
+                random.choice(NeckTypes),
+                random.choice(UniqueSuffixes)
+            )
+            ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemLCK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+        if item_type_rng == 4:
+            item_type = "ACC"
+            item_name = "{} {} {} {}".format(
+                item_name, 
+                random.choice(UniquePrefixes), 
+                random.choice(AccTypes),
+                random.choice(UniqueSuffixes)
+            )
+            ItemATK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemDEF = random.randint(50000 * StatModifier, 100000 * StatModifier)
+            ItemLCK = random.randint(50000 * StatModifier, 100000 * StatModifier)
+        item: dict = {
+            "name": item_name,
+            "type": item_type,
+            "rarity": "Unique", 
+            "ATK": ItemATK, 
+            "DEF": ItemDEF, 
+            "LUCK": ItemLCK
+        }; return item

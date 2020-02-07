@@ -40,9 +40,9 @@ class Pot:
     # Returns a new side pot, for when the bet overflows what can be contained
     # in this pot
     def make_side_pot(self):
-        excluded = {player for player in self.players
-                    if player.max_bet == self.max_bet}
+        excluded = {player for player in self.players if player.max_bet == self.max_bet}
         return Pot(self.players - excluded)
+
 
 # A class to manage pots and side pots and who is in each pot and how much
 # each player has bet so far
@@ -83,10 +83,14 @@ class PotManager:
 
     def debug_print(self):
         for i, pot in enumerate(self.pots):
-            print("Pot #**{}**. Bet: $*{}* (Max: **{}**). ".format(i,pot.cur_bet,pot.max_bet),
-                  "Amount: $**{}**.".format(pot.amount))
+            print(
+                "Pot #**{}**. Bet: $*{}* (Max: **{}**). ".format(
+                    i, pot.cur_bet, pot.max_bet
+                ),
+                "Amount: $**{}**.".format(pot.amount),
+            )
             for player in pot.players:
-                print("@{}: **{}**".format(player.name,player.balance))
+                print("@{}: **{}**".format(player.name, player.balance))
             print("-----")
 
     # Handles a player folding, removing them from every pot that they're
@@ -171,5 +175,4 @@ class PotManager:
         for player in self.pots[-1].players:
             player.placed_bet = False
             player.cur_bet = 0
-        self.pots[-1].max_bet = min(player.max_bet
-                                    for player in self.pots[-1].players)
+        self.pots[-1].max_bet = min(player.max_bet for player in self.pots[-1].players)

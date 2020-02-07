@@ -29,7 +29,7 @@ class Player:
 
     # Increases the player's bet to match new_amount
     def bet(self, new_amount: int) -> int:
-        money_lost = (new_amount - self.cur_bet)
+        money_lost = new_amount - self.cur_bet
         self.balance -= money_lost
         self.cur_bet = new_amount
         return money_lost

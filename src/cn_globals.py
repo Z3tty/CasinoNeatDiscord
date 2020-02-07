@@ -16,7 +16,7 @@
 # I'm really sorry but globals are really the easiest way of handling this
 RIGGED = False
 DB = "DB/database.json"
-AUTHOR = "Zet#1024 (github.com/ZexZee)"
+AUTHOR = "Zetty#1024 (github.com/ZexZee)"
 RANDOM_EVENT_CURRENTLY = False
 RANDOM_EVENT_AMOUNT = 0
 CRATE_SPAWNED = False
@@ -32,8 +32,9 @@ DAILY_STREAK_SCALAR = 2
 FINE_AMOUNT = 500
 BRIBE_PRICE = 10000
 LOTTO_REWARD = 10000000
-VERSION = "2.1.2"
+VERSION = "2.3.0"
 SILENT = False
+MATERIALS_PER_ITEM = 15
 
 # OC dont steal
 TOKEN = ""

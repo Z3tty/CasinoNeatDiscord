@@ -78,6 +78,7 @@ from cn_globals import (
     LOTTO_REWARD,
     DAILY_BONUS,
     TOKEN,
+    MATERIALS_PER_ITEM,
 )
 
 print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded cn_globals]")
@@ -93,6 +94,9 @@ print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded collections::namedt
 import os
 
 print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded os]")
+import sys
+
+print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded sys]")
 from typing import Dict, List
 
 print(S.BRIGHT + F.GREEN + "[OK]\t" + S.RESET_ALL + "[Loaded typing::Dict]")
@@ -273,7 +277,7 @@ async def on_message(message):
         if coinflip < 50:
             CRATE_GIVES_XP = True
         crate_rarity_roll: int = random.randint(0, 100)
-        crate_rarity: str = ""
+        crate_rarity: str = "Trash"
         if crate_rarity_roll < 75:
             crate_rarity = "Common"
         if crate_rarity_roll < 50:
@@ -282,7 +286,7 @@ async def on_message(message):
             crate_rarity = "Rare"
         if crate_rarity_roll < 10:
             crate_rarity = "Epic"
-        CRATE_REWARD_AMOUNT = (100 - crate_rarity_roll) * 10
+        CRATE_REWARD_AMOUNT = (100 - crate_rarity_roll) * 100
         if not CRATE_GIVES_XP:
             CRATE_REWARD_AMOUNT *= 100
         CRATE_SPAWNED = True
@@ -298,6 +302,7 @@ async def on_message(message):
                 crate_rarity
             )
         )
+
     # Logging
     if not author.bot and not FILTER_USERS:
         print(
@@ -2195,9 +2200,20 @@ async def deal(ctx):
         if player.user.dm_channel == None:
             await player.user.create_dm()
         channel = player.user.dm_channel
+        suit_translate: dict = {
+            "♠": "Spade",
+            "♥": "Heart",
+            "♦": "Diamond",
+            "♣": "Clover",
+        }
         await channel.send(
-            "Your cards:\n{}{} / {}{}".format(
-                cards[0].suit, cards[0].rank, cards[1].suit, cards[1].rank
+            "================================\nYour cards:\n{}{}({}) / {}{}({})\n================================".format(
+                cards[0].suit,
+                cards[0].rank,
+                suit_translate[cards[0].suit],
+                cards[1].suit,
+                cards[1].rank,
+                suit_translate[cards[1].suit],
             )
         )
 
@@ -2606,11 +2622,9 @@ async def leaderboard(ctx, ranking: str = ""):
 async def dungeon(ctx, dungeon_level: int = -1):
     global DATABASE
     global GENERATOR
-    if dungeon_level < 0 or dungeon_level > 10:
+    if dungeon_level < 0 or dungeon_level > 20:
         e: discord.Embed = compose_embed(
-            0xFF0000,
-            "Neat RPG",
-            "Please choose a dungeon between 0 and 10!\nNB: Boss level is 10 times the dungeon level",
+            0xFF0000, "Neat RPG", "Please choose a dungeon between 0 and 20!"
         )
         await ctx.send(embed=e)
         return
@@ -2621,26 +2635,40 @@ async def dungeon(ctx, dungeon_level: int = -1):
         (int(char["LV"]) - dungeon_level * 10)
         + (int(char["ATK"]) - int(boss["DEF"]))
         - (int(boss["ATK"]) - int(char["DEF"]))
-    ) + int(char["LUCK"]) > 0
+    ) + (int(char["LUCK"]) - random.randint(0, int(char["LUCK"]))) > 0
     if success:
         item_dropped: bool = random.randint(0, 15) + int(
             int(float(char["LUCK"])) % 10000
         ) > 12
         cash_reward: int = random.randint(
-            dungeon_level * 1000, dungeon_level * 2000
-        ) + random.randint(100, 2000)
+            dungeon_level * 1000, dungeon_level * 5000
+        ) + random.randint(100 * dungeon_level + 5, 2000 * dungeon_level + 200)
         xp_reward: int = random.randint(
             dungeon_level * 400, dungeon_level * 800
-        ) + random.randint(50, 200)
+        ) + random.randint(50 * dungeon_level + 5, 200 * dungeon_level + 200)
+        if char["EVOC"] == "1":
+            cash_reward *= 2
+            xp_reward *= 2
+        if char["BLSS"] == "0":
+            cash_reward *= 3
+            xp_reward *= 3
         if item_dropped:
-            item = GENERATOR.random_item(int(char["LUCK"]) + (dungeon_level * 50))
+            boost: int = 0
+            relic: bool = False
+            if char["EVOC"] == "2":
+                boost = 10000
+            if char["BLSS"] == "2":
+                relic = True
+            item = GENERATOR.random_item(int(char["LUCK"]) + (dungeon_level * 100) + boost, relic)
         DATABASE.update_db(ctx.author.id, cash_reward, False, False)
         DATABASE.update_db(ctx.author.id, xp_reward, False, False, True)
         if item != None:
             DATABASE.add_item(ctx.author.id, item)
             color = 0xFFFFFF
+            if item["rarity"] == "Relic":
+                color = 0x000000
             if item["rarity"] == "Artifact":
-                color = 0x00FFFF
+                color = 0xFF2211
             if item["rarity"] == "Legendary":
                 color = 0xAA8800
             if item["rarity"] == "Epic":
@@ -2665,8 +2693,13 @@ async def dungeon(ctx, dungeon_level: int = -1):
         e: discord.Embed = compose_embed(
             0x00FF00,
             "Neat RPG",
-            "You beat the tier {} boss {} and gained:\n¤{} and {}xp!".format(
-                dungeon_level, boss["name"], cash_reward, xp_reward
+            "You beat the tier {} boss {} (ATK {} - DEF {})\nand gained:\n¤{} and {}xp!".format(
+                dungeon_level,
+                boss["name"],
+                boss["ATK"],
+                boss["DEF"],
+                cash_reward,
+                xp_reward,
             ),
         )
         await ctx.send(embed=e)
@@ -2674,8 +2707,8 @@ async def dungeon(ctx, dungeon_level: int = -1):
         e: discord.Embed = compose_embed(
             0xFF0000,
             "Neat RPG",
-            "The tier {} boss {} obliterated your feeble body!".format(
-                dungeon_level, boss["name"]
+            "The tier {} boss {} (ATK {} - DEF {})\nobliterated your feeble body!".format(
+                dungeon_level, boss["name"], boss["ATK"], boss["DEF"]
             ),
         )
         await ctx.send(embed=e)
@@ -2684,6 +2717,24 @@ async def dungeon(ctx, dungeon_level: int = -1):
 @bot.command()
 async def sheet(ctx, user: discord.User = None):
     global DATABASE
+    orgn_board: dict = {
+        "-1": "None",
+        "0": "Dragonblood",
+        "1": "Bulwark",
+        "2": "Gambler"
+    }
+    evoc_board: dict = {
+        "-1": "None",
+        "0": "Hellfire",
+        "1": "Delver",
+        "2": "Highroller"
+    }
+    blss_board: dict = {
+        "-1": "None",
+        "0": "Blessing of Helia",
+        "1": "Blessing of Aevam",
+        "2": "Blessing of Zadr"
+    }
     if user == None:
         user = ctx.author
     user_data = DATABASE.get_player_data(user.id)
@@ -2693,7 +2744,7 @@ async def sheet(ctx, user: discord.User = None):
     ring_data = json.loads(user_data["ring"])
     neck_data = json.loads(user_data["neck"])
     acc_data = json.loads(user_data["accessory"])
-    header: str = "[{}] {}".format(user_data["level"], user.name)
+    header: str = "[{}] {}\nOrigin: {} / Evocation: {} / Blessing: {}".format(user_data["level"], user.name, orgn_board[char_data["ORGN"]], evoc_board[char_data["EVOC"]], blss_board[char_data["BLSS"]])
     message: str = "ATK:\t{} / DEF:\t{} / LUCK:\t{}\n\nWeapon: {}\n#{}\t(ATK {}/DEF {}/LUCK {})\n\nArmor: {}\n#{}\t(ATK {}/DEF {}/LUCK {})\n\nRing: {}\n#{}\t(ATK {}/DEF {}/LUCK {})\n\nNeck: {}\n#{}\t(ATK {}/DEF {}/LUCK {})\n\nAccessory: {}\n#{}\t(ATK {}/DEF {}/LUCK {})".format(
         user_data["rpg_attack"],
         user_data["rpg_defense"],
@@ -2737,6 +2788,75 @@ async def sheet(ctx, user: discord.User = None):
     await ctx.send(embed=e)
 
 
+@bot.command()
+async def origin(ctx, selection: int = -1):
+    global DATABASE
+    char_data = DATABASE.get_character(ctx.author.id)
+    if int(char_data["LV"]) < 5:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You cant choose an origin until level 5!")
+        await ctx.send(embed=e); return
+    if char_data["ORGN"] != "-1":
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You've already chosen your origin!")
+        await ctx.send(embed=e); return
+    if selection == -1:
+        e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Origins, select with ?origin <id>")
+        e.add_field(name="0: Dragonblood", value="Gain extra attack with levelups", inline=False)
+        e.add_field(name="1: Bulwark", value="Gain extra defense with levelups", inline=False)
+        e.add_field(name="2: Gambler", value="Gain extra luck with levelups", inline=False)
+        await ctx.send(embed=e); return
+    if selection > 2:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "No such origin has been made yet!")
+        await ctx.send(embed=e); return
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Origin chosen!")
+    await ctx.send(embed=e)
+    DATABASE.set_special("origin", ctx.author.id, str(selection))
+
+@bot.command()
+async def evocation(ctx, selection: int = -1):
+    global DATABASE
+    char_data = DATABASE.get_character(ctx.author.id)
+    if int(char_data["LV"]) < 25:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You cant choose an evocation until level 25!")
+        await ctx.send(embed=e); return
+    if char_data["EVOC"] != "-1":
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You've already chosen your evocation!")
+        await ctx.send(embed=e); return
+    if selection == -1:
+        e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Evocations, select with ?evocation <id>")
+        e.add_field(name="0: Hellfire", value="Gain a boost to attack during raids", inline=False)
+        e.add_field(name="1: Delver", value="Get more xp and cash from dungeons", inline=False)
+        e.add_field(name="2: Highroller", value="Get higher quality items from drops", inline=False)
+        await ctx.send(embed=e); return
+    if selection > 2:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "No such evocation has been made yet!")
+        await ctx.send(embed=e); return
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Evocation chosen!")
+    await ctx.send(embed=e)
+    DATABASE.set_special("evocation", ctx.author.id, str(selection))
+
+@bot.command()
+async def blessing(ctx, selection: int = -1):
+    global DATABASE
+    char_data = DATABASE.get_character(ctx.author.id)
+    if int(char_data["LV"]) < 50:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You cant choose a blessing until level 50!")
+        await ctx.send(embed=e); return
+    if char_data["BLSS"] != "-1":
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You've already chosen your blessing!")
+        await ctx.send(embed=e); return
+    if selection == -1:
+        e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Blessings, select with ?blessing <id>")
+        e.add_field(name="0: Blessing of Helia", value="Gain far more cash and xp from dungeons and raids", inline=False)
+        e.add_field(name="1: Blessing of Aevam", value="Gain extra stats from levelups", inline=False)
+        e.add_field(name="2: Blessing of Zadr", value="Can get Relics from dungeons", inline=False)
+        await ctx.send(embed=e); return
+    if selection > 2:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "No such blessing has been made yet!")
+        await ctx.send(embed=e); return
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "Blessing chosen!")
+    await ctx.send(embed=e)
+    DATABASE.set_special("blessing", ctx.author.id, str(selection))
+
 @bot.command(aliases=["inv"])
 async def inventory(ctx, user: discord.User = None):
     global DATABASE
@@ -2744,15 +2864,48 @@ async def inventory(ctx, user: discord.User = None):
     if user == None:
         u = ctx.author
     inventory = DATABASE.get_inventory(u.id)
+    pdata = DATABASE.get_player_data(u.id)
+    wpn_total: int = int(json.loads(pdata["weapon"])["ATK"]) + int(json.loads(pdata["weapon"])["DEF"]) + int(json.loads(pdata["weapon"])["LUCK"])
+    arm_total: int = int(json.loads(pdata["armor"])["ATK"]) + int(json.loads(pdata["armor"])["DEF"]) + int(json.loads(pdata["armor"])["LUCK"])
+    rng_total: int = int(json.loads(pdata["ring"])["ATK"]) + int(json.loads(pdata["ring"])["DEF"]) + int(json.loads(pdata["ring"])["LUCK"])
+    nck_total: int = int(json.loads(pdata["neck"])["ATK"]) + int(json.loads(pdata["neck"])["DEF"]) + int(json.loads(pdata["neck"])["LUCK"])
+    acc_total: int = int(json.loads(pdata["accessory"])["ATK"]) + int(json.loads(pdata["accessory"])["DEF"]) + int(json.loads(pdata["accessory"])["LUCK"])
     e: discord.Embed = compose_embed(
         0x00FF00, "Neat RPG", "{}'s inventory : [{}/16]".format(u.name, len(inventory))
     )
     i = 0
     for item in inventory:
+        sign: str = "="
         unpacked = json.loads(item)
+        unpacked_total: int = int(unpacked["ATK"]) + int(unpacked["DEF"]) + int(unpacked["LUCK"])
+        if unpacked["type"] == "WPN":
+            if unpacked_total < wpn_total:
+                sign = "-"
+            if unpacked_total > wpn_total:
+                sign = "+"
+        if unpacked["type"] == "ARM":
+            if unpacked_total < arm_total:
+                sign = "-"
+            if unpacked_total > arm_total:
+                sign = "+"
+        if unpacked["type"] == "RNG":
+            if unpacked_total < rng_total:
+                sign = "-"
+            if unpacked_total > rng_total:
+                sign = "+"
+        if unpacked["type"] == "NCK":
+            if unpacked_total < nck_total:
+                sign = "-"
+            if unpacked_total > nck_total:
+                sign = "+"
+        if unpacked["type"] == "ACC":
+            if unpacked_total < acc_total:
+                sign = "-"
+            if unpacked_total > acc_total:
+                sign = "+"
         e.add_field(
-            name="(EquipID: {}) {}\t#{}".format(
-                i, unpacked["name"], unpacked["rarity"]
+            name="(EquipID: {}) {}\t#{} [{}]".format(
+                i, unpacked["name"], unpacked["rarity"], sign
             ),
             value="({}/{}/{})".format(
                 unpacked["ATK"], unpacked["DEF"], unpacked["LUCK"]
@@ -2859,6 +3012,8 @@ async def raid(ctx, flag=""):
             combined_level += int(float(player_data["LV"]))
             combined_attack += int(float(player_data["ATK"]))
             combined_defense += int(float(player_data["DEF"]))
+            if player_data["EVOC"] == "0":
+                combined_attack += 5000
         success: bool = ((combined_level) - 200) + (
             combined_attack - int(RAID_BOSS["DEF"])
         ) - (int(RAID_BOSS["ATK"]) - combined_defense) > 0
@@ -2871,9 +3026,13 @@ async def raid(ctx, flag=""):
                 ),
             )
             for player in RAID_PLAYERS:
+                char = DATABASE.get_character(player.id)
                 if random.randint(0, 5) > 3:
+                    boost: int = 0
+                    if char["EVOC"] == "2":
+                        boost = 10000
                     item = GENERATOR.random_item(
-                        13500 + int(float(DATABASE.get_character(player.id)["LUCK"])),
+                        13500 + int(float(char["LUCK"])) + boost,
                         True,
                     )
                     e: discord.Embed = compose_embed(
@@ -2892,6 +3051,9 @@ async def raid(ctx, flag=""):
                     await ctx.send(embed=e)
                 cash_reward: int = random.randint(50000, 250000)
                 xp_reward: int = random.randint(5000, 25000)
+                if char["BLSS"] == "0":
+                    cash_reward *= 3
+                    xp_reward *= 3
                 Drops.add_field(
                     name="Raid Loot",
                     value="{} got ¤{} and {}xp for participating in the raid!".format(
@@ -2901,6 +3063,18 @@ async def raid(ctx, flag=""):
                 )
                 DATABASE.update_db(player.id, cash_reward, False, False)
                 DATABASE.update_db(player.id, xp_reward, False, False, True)
+                if random.randint(0, 10000) < 250:
+                        mtype: str = ""
+                        rng = random.randint(0, 100)
+                        if rng < 100:
+                            mtype = "Alpha"
+                        if rng < 25:
+                            mtype = "Beta"
+                        if rng < 5:
+                            mtype = "Gamma"
+                        DATABASE.update_materials(player.id, mtype.lower(), 1)
+                        materials = DATABASE.get_materials(player.id)
+                        Drops.add_field(name="{} was extremely lucky and got a {} material drop!".format(player.name, mtype), value="They now have {} {} materials!".format(materials[mtype.lower()], mtype.lower()), inline=False)
             await ctx.send(embed=Drops)
         else:
             e: discord.Embed = compose_embed(
@@ -2950,7 +3124,11 @@ async def trades(ctx):
     for idx in range(len(trades)):
         trade: dict = trades[idx]
         e.add_field(
-            name="({}) {}".format(tid, trade["player_id"]),
+            name="({}) {} {}".format(
+                tid,
+                trade["player_id"],
+                ("<- INCOMING" if trade["type"] == "INCOMING" else "-> OUTGOING"),
+            ),
             value="{}#{} ({}/{}/{})\nFOR\n{}#{} ({}/{}/{})".format(
                 trade["item0"]["name"],
                 trade["item0"]["rarity"],
@@ -2969,6 +3147,32 @@ async def trades(ctx):
 
 
 @bot.command()
+async def cancel(ctx, tid: int):
+    global DATABASE
+    trades = DATABASE.get_trades(ctx.author.id)
+    if tid >= 0 and tid < len(trades):
+        success: bool = DATABASE.resolve_trade(ctx.author.id, tid, False)
+        if success:
+            e: discord.Embed = compose_embed(
+                0x00FF00, "Neat RPG", "Cancelled trade #{}!".format(tid)
+            )
+            await ctx.send(embed=e)
+        else:
+            e: discord.Embed = compose_embed(
+                0xFF0000,
+                "Neat RPG",
+                "Something went wrong trying to accept that trade! Are you sure its outgoing?",
+            )
+            await ctx.send(embed=e)
+    else:
+        await ctx.send(
+            embed=compose_embed(
+                0xFF0000, "Neat RPG", "You cant resolve a nonexistant trade!"
+            )
+        )
+
+
+@bot.command()
 async def accept(ctx, tid: int):
     global DATABASE
     trades = DATABASE.get_trades(ctx.author.id)
@@ -2983,7 +3187,7 @@ async def accept(ctx, tid: int):
             e: discord.Embed = compose_embed(
                 0xFF0000,
                 "Neat RPG",
-                "Something went wrong trying to accept that trade!",
+                "Something went wrong trying to accept that trade! Are you sure its incoming?",
             )
             await ctx.send(embed=e)
     else:
@@ -3019,6 +3223,108 @@ async def decline(ctx, tid: int):
             )
         )
 
+@bot.command()
+async def forge(ctx, mtype: str = ""):
+    global DATABASE
+    global GENERATOR
+    global MATERIALS_PER_ITEM
+    author = ctx.author
+    if mtype not in ("alpha", "beta", "gamma"):
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "Illegal material type!")
+        await ctx.send(embed=e)
+        return
+    success: bool = DATABASE.update_materials(author.id, mtype, MATERIALS_PER_ITEM, True)
+    if not success:
+        e: discord.Embed = compose_embed(0xFF0000, "Neat RPG", "You do not have enough materials to make an item of this quality")
+        await ctx.send(embed=e)
+        return
+    item = GENERATOR.forge_item(mtype)
+    DATABASE.add_item(author.id, item)
+    e: discord.Embed = compose_embed(0x00FF00, "Neat RPG", "You successfully forged the item {} - #{} ({})".format(item["name"], item["rarity"], item["type"]))
+    await ctx.send(embed=e)
+    return
+
+@bot.command()
+async def materials(ctx, user: discord.User = None):
+    global DATABASE
+    if user == None:
+        user = ctx.author
+    materials = DATABASE.get_materials(user.id)
+    e: discord.Embed = compose_embed(0xFF00FF, "Neat RPG", "{}'s materials".format(user.name))
+    e.add_field(name="α materials", value="{}".format(materials["alpha"]), inline=False)
+    e.add_field(name="β materials", value="{}".format(materials["beta"]), inline=False)
+    e.add_field(name="γ materials", value="{}".format(materials["gamma"]), inline=False)
+    await ctx.send(embed=e)
+
+# Admin commands
+
+@bot.command()
+async def forcesave(ctx):
+    global DATABASE
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        e: discord.Embed = compose_embed(0x00FF00, "ADMIN COMMAND", "Saving internal state to DB ...")
+        msg = await ctx.send(embed=e)
+        DATABASE.push()
+        e = compose_embed(0x00FF00, "ADMIN COMMAND", "Saved!")
+        await msg.edit(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "ADMIN COMMAND", "I'm sorry, but you dont look like an admin to me")
+        await ctx.send(embed=e)
+
+@bot.command()
+async def giveitem(ctx, user: discord.User, name: str, itemtype: str, atk: int, defn: int, luck: int):
+    global DATABASE
+    global GENERATOR
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        e: discord.Embed = compose_embed(0x00FF00, "ADMIN COMMAND", "Creating item ...")
+        msg = await ctx.send(embed=e)
+        item = GENERATOR.make_unique_item(name, itemtype, atk, defn, luck)
+        DATABASE.add_item(user.id, item)
+        e = compose_embed(0x00FF00, "ADMIN COMMAND", "Added {} to {}'s inventory!".format(item["name"], user.name))
+        await msg.edit(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "ADMIN COMMAND", "I'm sorry, but you dont look like an admin to me")
+        await ctx.send(embed=e)
+
+@bot.command(pass_context=True)
+async def mute(ctx, user: discord.Member, time: int):
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        role = discord.utils.get(user.guild.roles, name='Muted')
+        await user.add_roles(role)
+        e: discord.Embed = compose_embed(0x00FF00, "ADMIN COMMAND", "Muted {} for {} seconds".format(user.name, time))
+        await ctx.send(embed=e)
+        await asyncio.sleep(float(time))
+        await user.remove_roles(role)
+        e = compose_embed(0xFF0000, "ADMIN COMMAND", "User {} has been unmuted.".format(user.name))
+        await ctx.send(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "ADMIN COMMAND", "I'm sorry, but you dont look like an admin to me")
+        await ctx.send(embed=e)
+
+@bot.command()
+async def kick(ctx, user: discord.Member, *reason):
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        await ctx.guild.kick(user, reason=" ".join(reason))
+        e: discord.Embed = compose_embed(0x00FF00, "ADMIN COMMAND", "Kicked {} for {}".format(user.name, " ".join(reason)))
+        await ctx.send(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "ADMIN COMMAND", "I'm sorry, but you dont look like an admin to me")
+        await ctx.send(embed=e)
+    
+@bot.command()
+async def ban(ctx, user: discord.Member, *reason):
+    is_admin: bool = ctx.author.top_role.permissions.administrator
+    if is_admin:
+        await ctx.guild.ban(user, reason=" ".join(reason))
+        e: discord.Embed = compose_embed(0x00FF00, "ADMIN COMMAND", "Banned {} for {}".format(user.name, " ".join(reason)))
+        await ctx.send(embed=e)
+    else:
+        e: discord.Embed = compose_embed(0xFF0000, "ADMIN COMMAND", "I'm sorry, but you dont look like an admin to me")
+        await ctx.send(embed=e)
 
 bot.run(
     TOKEN

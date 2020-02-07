@@ -130,6 +130,7 @@ class CNDatabase:
         }
         new_user_inv: list = []
         new_user_trades: list = []
+        new_user_materials: dict = {"alpha":"0", "beta":"0", "gamma":"0"}
         new_user.setprop("id", userid)
         new_user.setprop("balance", "1000")
         new_user.setprop("xp", "0")
@@ -142,6 +143,9 @@ class CNDatabase:
         new_user.setprop("rpg_attack", "10")
         new_user.setprop("rpg_defense", "10")
         new_user.setprop("rpg_luck", "1")
+        new_user.setprop("origin", "-1")
+        new_user.setprop("evocation", "-1")
+        new_user.setprop("blessing", "-1")
         new_user.setprop("weapon", json.dumps(new_user_weapon))
         new_user.setprop("armor", json.dumps(new_user_armor))
         new_user.setprop("ring", json.dumps(new_user_ring))
@@ -149,6 +153,7 @@ class CNDatabase:
         new_user.setprop("accessory", json.dumps(new_user_acc))
         new_user.setprop("inv", json.dumps(new_user_inv))
         new_user.setprop("trade_requests", json.dumps(new_user_trades))
+        new_user.setprop("materials", json.dumps(new_user_materials))
         self._db_map.append(new_user)
         with open(DB, "a") as db:
             db.write(json.dumps(new_user.getall()) + "\n")
@@ -178,14 +183,27 @@ class CNDatabase:
                             atk = int(float(user.getprop("rpg_attack")))
                             defn = int(float(user.getprop("rpg_defense")))
                             luck = int(float(user.getprop("rpg_luck")))
+                            stat_boost_atk: int = 0
+                            stat_boost_def: int = 0
+                            stat_boost_luck: int = 0
+                            if user.getprop("origin") == "0":
+                                stat_boost_atk = 50
+                            if user.getprop("origin") == "1":
+                                stat_boost_def = 50
+                            if user.getprop("origin") == "2":
+                                stat_boost_luck = 50
+                            if user.getprop("blessing") == "1":
+                                stat_boost_atk  = 300
+                                stat_boost_def  = 300
+                                stat_boost_luck = 300
                             user.setprop(
-                                "rpg_attack", str(atk + random.randint(10, 100))
+                                "rpg_attack", str(atk + random.randint(10, 100) + stat_boost_atk)
                             )
                             user.setprop(
-                                "rpg_defense", str(defn + random.randint(10, 100))
+                                "rpg_defense", str(defn + random.randint(10, 100) + stat_boost_def)
                             )
                             user.setprop(
-                                "rpg_luck", str(luck + random.randint(10, 100))
+                                "rpg_luck", str(luck + random.randint(10, 100) + stat_boost_luck)
                             )
                             old_level = level
                         tmp -= 1500 * level
@@ -343,6 +361,7 @@ class CNDatabase:
             self._db_map[index] = user
             return tmp + 1
 
+
     def get_character(self, uid) -> dict:
         user: CNDBUser = CNDBUser()
         for u in self._db_map:
@@ -381,6 +400,9 @@ class CNDatabase:
                 + int(float(neck_data["LUCK"]))
                 + int(float(acc_data["LUCK"]))
             ),
+            "ORGN": user.getprop("origin"),
+            "EVOC": user.getprop("evocation"),
+            "BLSS": user.getprop("blessing"),
         }
         return character_data
 
@@ -457,6 +479,8 @@ class CNDatabase:
         value: int = int(float(item["ATK"])) + int(float(item["DEF"])) + int(
             float(item["LUCK"])
         )
+        if item["rarity"] == "Unique":
+            value *= 20
         if item["rarity"] == "GM" or item["rarity"] == "Relic":
             value *= 10
         if item["rarity"] == "Artifact":
@@ -495,8 +519,16 @@ class CNDatabase:
                 recp = u
         if user.empty() or recp.empty() or user.getprop("id") == recp.getprop("id"):
             return False
+        recp_trades: list = self.get_trades(recp.getprop("id"))
         u0_item = trade["item0"]
         u1_item = trade["item1"]
+        recp_id: int = -1
+        for t in recp_trades:
+            recp_id += 1
+            if trade["player_id"] == str(uid):
+                if t["item0"] == trade["item0"]:
+                    if t["item1"] == trade["item1"]:
+                        break
         u0_inv = self.get_inventory(uid)
         u1_inv = self.get_inventory(recp.getprop("id"))
         if accept:
@@ -510,7 +542,9 @@ class CNDatabase:
             user.setprop("inv", json.dumps(u0_inv))
             recp.setprop("inv", json.dumps(u1_inv))
         del trades[tid]
+        del recp_trades[recp_id]
         user.setprop("trade_requests", json.dumps(trades))
+        recp.setprop("trade_requests", json.dumps(recp_trades))
         return True
 
     def add_trade(self, uid, recipient, eid, reid) -> bool:
@@ -525,18 +559,66 @@ class CNDatabase:
             return False
         uinv = self.get_inventory(uid)
         rinv = self.get_inventory(recipient)
-        item_0 = json.loads(uinv[eid])
-        item_1 = json.loads(rinv[reid])
+        item_0 = json.loads(rinv[reid])
+        item_1 = json.loads(uinv[eid])
         del uinv[eid]
         del rinv[reid]
         user.setprop("inv", json.dumps(uinv))
         recp.setprop("inv", json.dumps(rinv))
-        trade: dict = {
+        t0: dict = {
+            "type": "INCOMING",
             "player_id": user.getprop("id"),
             "item0": item_0,
             "item1": item_1,
         }
-        trades: list = self.get_trades(recp.getprop("id"))
-        trades.append(trade)
-        recp.setprop("trade_requests", json.dumps(trades))
+        t1: dict = {
+            "type": "OUTGOING",
+            "player_id": recp.getprop("id"),
+            "item0": item_0,
+            "item1": item_1,
+        }
+        recp_trades: list = self.get_trades(recp.getprop("id"))
+        user_trades: list = self.get_trades(user.getprop("id"))
+        recp_trades.append(t0)
+        user_trades.append(t1)
+        
+        recp.setprop("trade_requests", json.dumps(recp_trades))
+        user.setprop("trade_requests", json.dumps(user_trades))
         return True
+
+    def set_special(self, special: str, uid, val: str) -> None:
+        user: CNDBUser = CNDBUser()
+        for u in self._db_map:
+            if u.getprop("id") == str(uid):
+                user = u
+        if user.empty():
+            return      
+        user.setprop(special, val)
+    
+    def update_materials(self, uid, mtype: str, amount: int, sub: bool = False) -> bool:
+        user: CNDBUser = CNDBUser()
+        for u in self._db_map:
+            if u.getprop("id") == str(uid):
+                user = u
+        if user.empty():
+            return False
+        um: dict = json.loads(user.getprop("materials"))
+        m_amount: int = int(um[mtype])
+        if sub:
+            if m_amount < amount:
+                return False
+            m_amount -= amount
+        else:
+            m_amount += amount
+        um[mtype] = str(m_amount)
+        user.setprop("materials", json.dumps(um))
+        return True
+    
+    def get_materials(self, uid) -> dict:
+        user: CNDBUser = CNDBUser()
+        for u in self._db_map:
+            if u.getprop("id") == str(uid):
+                user = u
+        if user.empty():
+            return False
+        return json.loads(user.getprop("materials"))    

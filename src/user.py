@@ -20,49 +20,34 @@ class CNDBUser:
             "accessory",
             "inv",
             "trade_requests",
+            "origin",
+            "evocation",
+            "blessing",
+            "materials",
         ]
-        self.data: dict = {
-            "id": None,
-            "balance": None,
-            "xp": None,
-            "level": None,
-            "last_daily": None,
-            "daily_streak": None,
-            "cookies_sent": None,
-            "cookies_got": None,
-            "thefts_failed": None,
-            "rpg_attack": None,
-            "rpg_defense": None,
-            "rpg_luck": None,
-            "weapon": None,
-            "armor": None,
-            "ring":None,
-            "neck":None,
-            "accessory":None,
-            "inv": None,
-            "trade_requests": None,
-        }
+        self.data: dict = {}
+        for prop in self.properties: self.data[prop] = None
 
     def getall(self) -> dict:
         return self.data
 
-    def getprop(self, property: str):
-        if property not in self.properties:
-            print("CNDBUser :: NoSuchProperty Error -> {}".format(property))
+    def getprop(self, prop: str):
+        if prop not in self.properties:
+            print("CNDBUser :: NoSuchProperty Error -> {}".format(prop))
             return None
-        return self.data[property]
+        return self.data[prop]
 
     def setall(self, data: dict) -> None:
         self.data = data
 
-    def setprop(self, property: str, value: str) -> None:
-        if property not in self.properties:
-            print("CNDBUser :: NoSuchProperty Error -> {}".format(property))
+    def setprop(self, prop: str, value: str) -> None:
+        if prop not in self.properties:
+            print("CNDBUser :: NoSuchProperty Error -> {}".format(prop))
             return
-        self.data[property] = value
+        self.data[prop] = value
 
     def empty(self) -> bool:
-        for key in self.data:
-            if self.data[key] != None:
+        for prop in self.data:
+            if self.data[prop] != None:
                 return False
         return True
