@@ -1,0 +1,6 @@
+aiohttp==3.5.4
+async-timeout==3.0.1
+black==19.3b0
+colorama==0.4.1
+discord==1.0.1
+discord.py==1.2.3
