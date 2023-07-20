@@ -1,4 +1,4 @@
-aiohttp==3.7.4
+aiohttp==3.8.5
 async-timeout==3.0.1
 black==19.3b0
 colorama==0.4.1
